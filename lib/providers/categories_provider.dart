@@ -11,7 +11,7 @@ class CategoriesProvider extends AsyncNotifier<List<CategoryWithDetails>> {
   Future<List<CategoryWithDetails>> build() async {
     final db = await ref.watch(databaseProvider.future);
     _categoryDao = CategoryDao(db);
-    return _categoryDao.getAllCategories();
+    return await _categoryDao.getAllCategories();
   }
 
   Future<void> updateCategory(CategoriesCompanion category) async {

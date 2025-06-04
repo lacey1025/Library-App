@@ -38,14 +38,24 @@ class SessionDao extends DatabaseAccessor<LibraryDatabase>
     return select(sessions).get();
   }
 
-  Future<void> activateSession(String userId) async {
-    await transaction(() async {
+  Future<bool> activateSession(String userId) async {
+    return transaction(() async {
+      final existingSession =
+          await (select(sessions)
+            ..where((s) => s.userId.equals(userId))).getSingleOrNull();
+      if (existingSession == null) {
+        return false;
+      }
+
       await (update(
         sessions,
       )).write(const SessionsCompanion(isActive: Value(false)));
+
       await (update(sessions)..where(
         (s) => s.userId.equals(userId),
       )).write(const SessionsCompanion(isActive: Value(true)));
+
+      return true;
     });
   }
 
