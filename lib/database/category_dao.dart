@@ -38,8 +38,8 @@ class CategoryDao extends DatabaseAccessor<LibraryDatabase>
       ..where((c) => c.name.equals(name))).getSingleOrNull();
   }
 
-  Future<void> insertOrUpdateCategory(CategoriesCompanion category) async {
-    await into(categories).insertOnConflictUpdate(category);
+  Future<int> insertOrUpdateCategory(CategoriesCompanion category) async {
+    return await into(categories).insertOnConflictUpdate(category);
   }
 
   Future<void> deleteCategory(String name) async {

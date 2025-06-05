@@ -20,10 +20,12 @@ class CategoriesProvider extends AsyncNotifier<List<CategoryWithDetails>> {
     state = AsyncData(await _categoryDao.getAllCategories());
   }
 
-  Future<void> addCategory(CategoriesCompanion category) async {
+  Future<CategoryWithDetails> addCategory(CategoriesCompanion category) async {
     state = const AsyncLoading();
-    await _categoryDao.insertOrUpdateCategory(category);
+    final newId = await _categoryDao.insertOrUpdateCategory(category);
+    final newCategory = await _categoryDao.getCategoryById(newId);
     state = AsyncData(await _categoryDao.getAllCategories());
+    return newCategory;
   }
 
   Future<void> deleteCategory(String name) async {

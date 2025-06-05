@@ -90,9 +90,19 @@ ThemeData primaryTheme = ThemeData(
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
     fillColor: Colors.grey[800],
-    //border: InputBorder.none,
+    labelStyle: TextStyle(color: Colors.white),
+    errorStyle: TextStyle(color: Colors.red[600]),
+    errorBorder: UnderlineInputBorder(
+      borderSide: BorderSide(color: const Color.fromRGBO(229, 57, 53, 1)),
+    ),
+    focusedErrorBorder: UnderlineInputBorder(
+      borderSide: BorderSide(color: const Color.fromRGBO(229, 57, 53, 1)),
+    ),
   ),
 
+  textButtonTheme: TextButtonThemeData(
+    style: TextButton.styleFrom(foregroundColor: Colors.white),
+  ),
   dialogTheme: DialogTheme(
     backgroundColor: Colors.grey[800],
     titleTextStyle: TextStyle(
@@ -100,6 +110,12 @@ ThemeData primaryTheme = ThemeData(
       fontFamily: 'GI',
       fontWeight: FontWeight.w700,
       fontSize: 24,
+    ),
+    contentTextStyle: TextStyle(
+      color: Colors.white,
+      fontFamily: 'GI',
+      fontWeight: FontWeight.w700,
+      fontSize: 18,
     ),
   ),
 

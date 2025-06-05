@@ -7,6 +7,7 @@ import 'package:library_app/models/status.dart';
 import 'package:library_app/providers/categories_provider.dart';
 import 'package:library_app/providers/scores_provider.dart';
 import 'package:library_app/screens/home/home.dart';
+import 'package:library_app/shared/gradient_button.dart';
 import 'package:library_app/shared/status_card.dart';
 import 'package:library_app/shared/appbar.dart';
 import 'package:library_app/shared/custom_chip.dart';
@@ -63,6 +64,11 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
       _subcategories
         ..clear()
         ..addAll(updatedCategory.subcategories ?? []);
+      if (updatedCategory.subcategories != null) {
+        _selectedSubcategories.add(
+          updatedCategory.subcategories!.firstWhere((s) => (s.name == newName)),
+        );
+      }
       _controller.clear();
       _isEditing = false;
     });
@@ -358,7 +364,6 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                           },
                         ),
                         const SizedBox(height: 10),
-
                         DropdownButtonFormField<int>(
                           dropdownColor: Colors.grey[800],
                           value: _selectedCategory?.category.id,
@@ -367,38 +372,191 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                             labelStyle: Theme.of(context).textTheme.bodyMedium,
                           ),
                           items: categories.when(
-                            data:
-                                (categoryList) =>
-                                    categoryList.map((category) {
-                                      return DropdownMenuItem<int>(
-                                        alignment: AlignmentDirectional.center,
-                                        value: category.category.id,
-                                        child: Text(
-                                          category.category.name,
-                                          style:
-                                              Theme.of(
-                                                context,
-                                              ).textTheme.bodyMedium,
-                                        ),
-                                      );
-                                    }).toList(),
+                            data: (categoryList) {
+                              final items =
+                                  categoryList.map((category) {
+                                    return DropdownMenuItem<int>(
+                                      alignment: AlignmentDirectional.center,
+                                      value: category.category.id,
+                                      child: Text(
+                                        category.category.name,
+                                        style:
+                                            Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium,
+                                      ),
+                                    );
+                                  }).toList();
+
+                              items.add(
+                                DropdownMenuItem<int>(
+                                  value: -1,
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.add,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        "Add new category...",
+                                        style:
+                                            Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                              return items;
+                            },
                             loading: () => [],
                             error: (err, stack) => [],
                           ),
-                          onChanged: (newId) {
+                          onChanged: (newId) async {
                             if (newId == null) return;
-                            final categoryList = categories.asData?.value;
-                            if (categoryList == null) return;
-                            final selected = categoryList.firstWhere(
-                              (c) => c.category.id == newId,
-                            );
-                            setState(() {
-                              _selectedCategory = selected;
-                              _selectedSubcategories.clear();
-                              _subcategories
-                                ..clear()
-                                ..addAll(selected.subcategories ?? {});
-                            });
+                            if (newId == -1) {
+                              final dialogFormKey = GlobalKey<FormState>();
+                              String name = '';
+                              String identifier = '';
+                              final result = await showDialog<
+                                Map<String, String>
+                              >(
+                                context: context,
+                                builder: (context) {
+                                  return AlertDialog(
+                                    title: Text("Add New Category"),
+                                    content: Form(
+                                      key: dialogFormKey,
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          TextFormField(
+                                            cursorColor: Colors.white,
+                                            autofocus: true,
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                            ),
+                                            decoration: InputDecoration(
+                                              enabledBorder:
+                                                  UnderlineInputBorder(
+                                                    borderSide: BorderSide(
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                              focusedBorder:
+                                                  UnderlineInputBorder(
+                                                    borderSide: BorderSide(
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                              labelText: "Category Name",
+                                            ),
+                                            onChanged: (value) => name = value,
+                                            validator:
+                                                (value) =>
+                                                    value == null ||
+                                                            value.trim().isEmpty
+                                                        ? 'Required'
+                                                        : null,
+                                          ),
+                                          SizedBox(height: 8),
+                                          TextFormField(
+                                            cursorColor: Colors.white,
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                            ),
+                                            decoration: InputDecoration(
+                                              enabledBorder:
+                                                  UnderlineInputBorder(
+                                                    borderSide: BorderSide(
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                              focusedBorder:
+                                                  UnderlineInputBorder(
+                                                    borderSide: BorderSide(
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                              labelText:
+                                                  "Letter Identifier (e.g. M)",
+                                            ),
+                                            maxLength: 10,
+                                            onChanged:
+                                                (value) => identifier = value,
+                                            validator:
+                                                (value) =>
+                                                    value == null ||
+                                                            value.trim().isEmpty
+                                                        ? 'Required'
+                                                        : null,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed:
+                                            () => Navigator.of(context).pop(),
+                                        child: Text("Cancel"),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          if (dialogFormKey.currentState!
+                                              .validate()) {
+                                            Navigator.of(context).pop({
+                                              'name': name.trim(),
+                                              'identifier':
+                                                  identifier
+                                                      .trim()
+                                                      .toUpperCase(),
+                                            });
+                                          }
+                                        },
+                                        child: Text("Add"),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                              if (result != null &&
+                                  result['name']!.isNotEmpty &&
+                                  result['identifier']!.isNotEmpty) {
+                                final newCategory = await ref
+                                    .read(categoriesNotifierProvider.notifier)
+                                    .addCategory(
+                                      CategoriesCompanion(
+                                        name: Value(result['name']!),
+                                        identifier: Value(
+                                          result['identifier']!,
+                                        ),
+                                      ),
+                                    );
+                                setState(() {
+                                  _selectedCategory = newCategory;
+                                  _selectedSubcategories.clear();
+                                  _subcategories
+                                    ..clear()
+                                    ..addAll(newCategory.subcategories ?? {});
+                                });
+                              }
+                            } else {
+                              final categoryList = categories.asData?.value;
+                              if (categoryList == null) return;
+                              final selected = categoryList.firstWhere(
+                                (c) => c.category.id == newId,
+                              );
+                              setState(() {
+                                _selectedCategory = selected;
+                                _selectedSubcategories.clear();
+                                _subcategories
+                                  ..clear()
+                                  ..addAll(selected.subcategories ?? {});
+                              });
+                            }
                           },
                           validator: (value) {
                             if (_selectedCategory == null) {
@@ -408,7 +566,9 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                           },
                           onSaved: (value) {
                             final categoryList = categories.asData?.value;
-                            if (categoryList != null && value != null) {
+                            if (categoryList != null &&
+                                value != null &&
+                                value != -1) {
                               _selectedCategory = categoryList.firstWhere(
                                 (c) => c.category.id == value,
                               );
@@ -625,32 +785,16 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(8, 10, 4, 5),
-                      child: TextButton(
+                      child: GradientButton(
                         onPressed: () {
                           Navigator.of(context).pop();
                         },
-                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Color.fromRGBO(87, 87, 87, 1),
-                                Color.fromRGBO(37, 37, 37, 1),
-                              ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            "Cancel",
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
+                        text: Text(
+                          "Cancel",
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
+                        colorStart: Color.fromRGBO(87, 87, 87, 1),
+                        colorEnd: Color.fromRGBO(37, 37, 37, 1),
                       ),
                     ),
                   ),
@@ -658,29 +802,11 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(4, 10, 8, 5),
-                      child: TextButton(
+                      child: GradientButton(
                         onPressed: handleSubmit,
-                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Color.fromRGBO(185, 0, 0, 1),
-                                Color.fromRGBO(100, 0, 0, 1),
-                              ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            "Submit",
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
+                        text: Text(
+                          "Submit",
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ),
                     ),

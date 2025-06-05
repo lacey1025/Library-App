@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:library_app/database/library_database.dart';
 import 'package:library_app/providers/app_initializer.dart';
 import 'package:library_app/providers/session_provider.dart';
-import 'package:library_app/shared/appbar.dart';
+import 'package:library_app/shared/gradient_button.dart';
 
 class CreateSheet extends ConsumerStatefulWidget {
   const CreateSheet({super.key});
@@ -179,14 +179,52 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: CustomAppBar(title: "Create Library"),
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
+      body: Stack(
         children: [
-          _buildFolderNameInput(),
-          _buildSheetNameInput(),
-          _buildSummaryScreen(),
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color.fromRGBO(24, 24, 24, 1),
+                  Color.fromRGBO(52, 52, 52, 1),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: ShaderMask(
+              shaderCallback: (Rect bounds) {
+                return LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.white.withValues(alpha: 0.8),
+                    Colors.white.withValues(alpha: 0.03),
+                  ],
+                ).createShader(bounds);
+              },
+              blendMode: BlendMode.dstIn,
+              child: Image.asset(
+                'assets/img/redbull.png',
+                height: 400,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          PageView(
+            controller: _pageController,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              _buildFolderNameInput(),
+              _buildSheetNameInput(),
+              _buildSummaryScreen(),
+            ],
+          ),
         ],
       ),
     );
@@ -198,41 +236,61 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text("Name Your Folder"),
+          Text(
+            "Please choose a name for a folder to store your digital music library",
+            overflow: TextOverflow.visible,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          SizedBox(height: 28),
           TextField(
             controller: _folderNameController,
-            decoration: const InputDecoration(labelText: "Folder Name"),
+            decoration: InputDecoration(
+              labelText: "Folder Name",
+              labelStyle: Theme.of(context).textTheme.bodyMedium,
+            ),
+            style: Theme.of(context).textTheme.bodyMedium,
+            textInputAction: TextInputAction.next,
           ),
           if (!_validInput)
             Text(
               "Please enter a name",
-              style: TextStyle(color: Colors.red[600]),
+              style: TextStyle(color: Colors.red[500]),
             ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 32),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text("Back"),
+              Expanded(
+                child: GradientButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  text: Text("Back"),
+                  height: 24,
+                  colorStart: Color.fromRGBO(87, 87, 87, 1),
+                  colorEnd: Color.fromRGBO(37, 37, 37, 1),
+                ),
               ),
-              ElevatedButton(
-                onPressed: () {
-                  if (_folderNameController.text.isEmpty) {
-                    setState(() {
-                      _validInput = false;
-                    });
-                  } else {
-                    setState(() {
-                      _validInput = true;
-                    });
-                    _folderName = _folderNameController.text;
-                    _goToNextPage();
-                  }
-                },
-                child: Text("Next"),
+              SizedBox(width: 8),
+              Expanded(
+                child: GradientButton(
+                  onPressed: () {
+                    if (_folderNameController.text.isEmpty) {
+                      setState(() {
+                        _validInput = false;
+                      });
+                    } else {
+                      setState(() {
+                        _validInput = true;
+                      });
+                      _folderName = _folderNameController.text;
+                      _goToNextPage();
+                    }
+                  },
+                  text: Text("Next"),
+                  height: 24,
+                ),
               ),
             ],
           ),
@@ -247,36 +305,59 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text("Name Your Sheet"),
+          Text(
+            "Please choose a name for your music catalog Google Sheet",
+            overflow: TextOverflow.visible,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          SizedBox(height: 28),
           TextField(
             controller: _sheetNameController,
-            decoration: const InputDecoration(labelText: "Sheet Name"),
+            decoration: InputDecoration(
+              labelText: "Sheet Name",
+              labelStyle: Theme.of(context).textTheme.bodyMedium,
+            ),
+            style: Theme.of(context).textTheme.bodyMedium,
+            textInputAction: TextInputAction.next,
           ),
           if (!_validInput)
             Text(
               "Please enter a name",
-              style: TextStyle(color: Colors.red[600]),
+              style: TextStyle(color: Colors.red[500]),
             ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 32),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              ElevatedButton(onPressed: _goToPreviousPage, child: Text("Back")),
-              ElevatedButton(
-                onPressed: () {
-                  if (_sheetNameController.text.isEmpty) {
-                    setState(() {
-                      _validInput = false;
-                    });
-                  } else {
-                    setState(() {
-                      _validInput = true;
-                    });
-                    _sheetName = _sheetNameController.text;
-                    _goToNextPage();
-                  }
-                },
-                child: const Text("Next"),
+              Expanded(
+                child: GradientButton(
+                  onPressed: _goToPreviousPage,
+                  text: Text("Back"),
+                  height: 24,
+                  colorStart: Color.fromRGBO(87, 87, 87, 1),
+                  colorEnd: Color.fromRGBO(37, 37, 37, 1),
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: GradientButton(
+                  onPressed: () {
+                    if (_sheetNameController.text.isEmpty) {
+                      setState(() {
+                        _validInput = false;
+                      });
+                    } else {
+                      setState(() {
+                        _validInput = true;
+                      });
+                      _sheetName = _sheetNameController.text;
+                      _goToNextPage();
+                    }
+                  },
+                  text: Text("Next"),
+                  height: 24,
+                ),
               ),
             ],
           ),
@@ -287,23 +368,51 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
 
   Widget _buildSummaryScreen() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text("Folder: $_folderName", style: TextStyle(color: Colors.white)),
-          Text("Sheet: $_sheetName", style: TextStyle(color: Colors.white)),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              ElevatedButton(onPressed: _goToPreviousPage, child: Text("Back")),
-              ElevatedButton(
-                onPressed: _createFolderAndSheet,
-                child: const Text("Create"),
-              ),
-            ],
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              "Create library now?",
+              overflow: TextOverflow.visible,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            SizedBox(height: 24),
+            Text(
+              "Folder Name: $_folderName",
+              style: TextStyle(color: Colors.white),
+            ),
+            Text(
+              "Sheet Name: $_sheetName",
+              style: TextStyle(color: Colors.white),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                  child: GradientButton(
+                    onPressed: _goToPreviousPage,
+                    text: Text("Back"),
+                    height: 24,
+                    colorStart: Color.fromRGBO(87, 87, 87, 1),
+                    colorEnd: Color.fromRGBO(37, 37, 37, 1),
+                  ),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: GradientButton(
+                    onPressed: _createFolderAndSheet,
+                    text: Text("Create"),
+                    height: 24,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
