@@ -26,6 +26,20 @@ class ScoreSubcategoriesDao extends DatabaseAccessor<LibraryDatabase>
     ).insert(ScoreSubcategory(scoreId: scoreId, subcategoryId: subcategoryId));
   }
 
+  Future<void> bulkInsertScoreSubcategory(
+    List<ScoreSubcategoriesCompanion> links,
+  ) async {
+    if (links.isEmpty) return;
+
+    await batch((batch) {
+      batch.insertAll(
+        scoreSubcategories,
+        links,
+        mode: InsertMode.insertOrIgnore,
+      );
+    });
+  }
+
   Future<void> removeSubcategoryFromScore(
     int scoreId,
     int subcategoryId,

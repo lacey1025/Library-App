@@ -102,11 +102,11 @@ class ScoresProvider extends AsyncNotifier<List<ScoreWithDetails>> {
     state = AsyncData(await _scoresDao.getAllScores());
   }
 
-  Future<String> getNewCatalogNumber(int categoryId) async {
-    return await _scoresDao.getNewCatalogNumber(categoryId);
+  Future<String> getNewCatalogNumber(int categoryId, String identifier) async {
+    return await _scoresDao.getNewCatalogNumber(categoryId, identifier);
   }
 
-  Future<bool> checkCatalogNumber(int catalogNumber, int categoryId) async {
+  Future<bool> checkCatalogNumber(String catalogNumber, int categoryId) async {
     return await _scoresDao.checkCatalogNumber(catalogNumber, categoryId);
   }
 

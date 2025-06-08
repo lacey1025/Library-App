@@ -8,7 +8,16 @@ import 'package:library_app/screens/login/no_library_screen.dart';
 import 'package:library_app/shared/flashing_logo.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
-  const SplashScreen({super.key});
+  final String? linkSheetId;
+  final String? linkFolderId;
+  final String? libraryName;
+
+  const SplashScreen({
+    super.key,
+    this.linkSheetId,
+    this.linkFolderId,
+    this.libraryName,
+  });
 
   @override
   ConsumerState<SplashScreen> createState() => _SplashScreenState();
@@ -27,7 +36,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
       if (!mounted) return;
 
-      if (appStartInfo.googleAccount == null) {
+      if (widget.linkSheetId != null && widget.linkFolderId != null) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder:
+                (_) => LoginScreen(
+                  linkSheetId: widget.linkSheetId,
+                  linkFolderId: widget.linkFolderId,
+                  libraryName: widget.libraryName,
+                ),
+          ),
+        );
+      } else if (appStartInfo.googleAccount == null) {
         Navigator.of(
           context,
         ).pushReplacement(MaterialPageRoute(builder: (_) => LoginScreen()));

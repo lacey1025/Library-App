@@ -4,11 +4,21 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:library_app/providers/app_initializer.dart';
 import 'package:library_app/providers/session_provider.dart';
 import 'package:library_app/screens/home/home.dart';
+import 'package:library_app/screens/invite/join_screen.dart';
 import 'package:library_app/screens/login/no_library_screen.dart';
 import 'package:library_app/shared/gradient_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  final String? linkSheetId;
+  final String? linkFolderId;
+  final String? libraryName;
+
+  const LoginScreen({
+    super.key,
+    this.linkSheetId,
+    this.linkFolderId,
+    this.libraryName,
+  });
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -42,8 +52,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .switchSession(account.id);
       final session = await ref.read(sessionProvider.future);
 
+      if (widget.linkSheetId != null && widget.linkFolderId != null) {
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder:
+                (_) => JoinLibraryScreen(
+                  sheetId: widget.linkSheetId!,
+                  folderId: widget.linkFolderId!,
+                  libraryName: widget.libraryName!,
+                ),
+          ),
+        );
+      }
       // Maybe check if sheet is in drive - could also do in upload
-      if (sheetExists && session != null) {
+      else if (sheetExists && session != null) {
         if (!mounted) return;
         Navigator.of(
           context,
@@ -124,7 +147,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           SizedBox(height: 32),
                           Text(
                             "To continue, please sign in with Google",
-                            style: Theme.of(context).textTheme.headlineMedium,
+                            style: Theme.of(context).textTheme.headlineMedium!
+                                .copyWith(fontWeight: FontWeight.w500),
                             textAlign: TextAlign.center,
                           ),
                           SizedBox(height: 32),
@@ -171,6 +195,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           icon: const Icon(Icons.logout),
                           label: const Text('Sign out'),
                         ),
+                        const SizedBox(height: 10),
+                        if (widget.linkFolderId != null &&
+                            widget.linkSheetId != null)
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(
+                                  builder:
+                                      (_) => JoinLibraryScreen(
+                                        sheetId: widget.linkSheetId!,
+                                        folderId: widget.linkFolderId!,
+                                        libraryName: widget.libraryName!,
+                                      ),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.logout),
+                            label: const Text('Continue with this account'),
+                          ),
                       ],
                     ),
           ),

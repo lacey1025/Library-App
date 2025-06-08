@@ -33,6 +33,14 @@ class CategoryDao extends DatabaseAccessor<LibraryDatabase>
     return categoryMap.values.toList();
   }
 
+  Future<List<SubcategoryData>> getAllSubCategories() async {
+    return select(subcategories).get();
+  }
+
+  Future<List<CategoryData>> getAllRawCategories() async {
+    return select(categories).get();
+  }
+
   Future<CategoryData?> getCategoryByName(String name) async {
     return (select(categories)
       ..where((c) => c.name.equals(name))).getSingleOrNull();
@@ -42,12 +50,54 @@ class CategoryDao extends DatabaseAccessor<LibraryDatabase>
     return await into(categories).insertOnConflictUpdate(category);
   }
 
+  Future<List<CategoryData>> bulkInsertCategories(
+    Map<String, String> nameToIdentifier,
+  ) async {
+    if (nameToIdentifier.isEmpty) return [];
+
+    await batch((batch) {
+      batch.insertAll(
+        categories,
+        nameToIdentifier.entries
+            .map(
+              (e) => CategoriesCompanion(
+                name: Value(e.key),
+                identifier: Value(e.value),
+              ),
+            )
+            .toList(),
+        mode: InsertMode.insertOrReplace,
+      );
+    });
+    return await (select(categories)
+      ..where((c) => c.name.isIn(nameToIdentifier.keys.toList()))).get();
+  }
+
   Future<void> deleteCategory(String name) async {
     await (delete(categories)..where((c) => c.name.equals(name))).go();
   }
 
-  Future<void> addSubcategory(SubcategoriesCompanion subcategory) async {
-    await into(subcategories).insert(subcategory);
+  Future<SubcategoryData> addSubcategory(
+    SubcategoriesCompanion subcategory,
+  ) async {
+    return await into(subcategories).insertReturning(subcategory);
+  }
+
+  Future<List<SubcategoryData>> bulkInserSubcategories(
+    List<SubcategoriesCompanion> companions,
+  ) async {
+    if (companions.isEmpty) return [];
+    await batch((batch) {
+      batch.insertAll(
+        subcategories,
+        companions,
+        mode: InsertMode.insertOrIgnore,
+      );
+    });
+
+    final names = companions.map((c) => c.name.value).toSet().toList();
+    return await (select(subcategories)
+      ..where((s) => s.name.isIn(names))).get();
   }
 
   Future<List<SubcategoryData>> getSubcategoriesByCategory(
@@ -57,7 +107,7 @@ class CategoryDao extends DatabaseAccessor<LibraryDatabase>
       ..where((s) => s.categoryId.equals(categoryId))).get();
   }
 
-  Future<CategoryWithDetails> getCategoryById(int categoryId) async {
+  Future<CategoryWithDetails> getCategoryWithDetailsById(int categoryId) async {
     final category =
         await (select(categories)
           ..where((tbl) => tbl.id.equals(categoryId))).getSingle();
@@ -69,6 +119,11 @@ class CategoryDao extends DatabaseAccessor<LibraryDatabase>
       category: category,
       subcategories: subcategoriesList.toSet(),
     );
+  }
+
+  Future<CategoryData?> getCategoryDataById(int categoryId) {
+    return (select(categories)
+      ..where((c) => c.id.equals(categoryId))).getSingleOrNull();
   }
 
   // String getNewId() {

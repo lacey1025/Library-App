@@ -9,6 +9,17 @@ class $SessionsTable extends Sessions
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $SessionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _libraryNameMeta = const VerificationMeta(
+    'libraryName',
+  );
+  @override
+  late final GeneratedColumn<String> libraryName = GeneratedColumn<String>(
+    'library_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
   @override
   late final GeneratedColumn<String> userId = GeneratedColumn<String>(
@@ -72,6 +83,7 @@ class $SessionsTable extends Sessions
   );
   @override
   List<GeneratedColumn> get $columns => [
+    libraryName,
     userId,
     sheetId,
     driveFolderId,
@@ -90,6 +102,17 @@ class $SessionsTable extends Sessions
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('library_name')) {
+      context.handle(
+        _libraryNameMeta,
+        libraryName.isAcceptableOrUnknown(
+          data['library_name']!,
+          _libraryNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_libraryNameMeta);
+    }
     if (data.containsKey('user_id')) {
       context.handle(
         _userIdMeta,
@@ -136,6 +159,11 @@ class $SessionsTable extends Sessions
   UserSessionData map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return UserSessionData(
+      libraryName:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}library_name'],
+          )!,
       userId:
           attachedDatabase.typeMapping.read(
             DriftSqlType.string,
@@ -170,12 +198,14 @@ class $SessionsTable extends Sessions
 }
 
 class UserSessionData extends DataClass implements Insertable<UserSessionData> {
+  final String libraryName;
   final String userId;
   final String sheetId;
   final String? driveFolderId;
   final bool isAdmin;
   final bool isActive;
   const UserSessionData({
+    required this.libraryName,
     required this.userId,
     required this.sheetId,
     this.driveFolderId,
@@ -185,6 +215,7 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    map['library_name'] = Variable<String>(libraryName);
     map['user_id'] = Variable<String>(userId);
     map['sheet_id'] = Variable<String>(sheetId);
     if (!nullToAbsent || driveFolderId != null) {
@@ -197,6 +228,7 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
 
   SessionsCompanion toCompanion(bool nullToAbsent) {
     return SessionsCompanion(
+      libraryName: Value(libraryName),
       userId: Value(userId),
       sheetId: Value(sheetId),
       driveFolderId:
@@ -214,6 +246,7 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return UserSessionData(
+      libraryName: serializer.fromJson<String>(json['libraryName']),
       userId: serializer.fromJson<String>(json['userId']),
       sheetId: serializer.fromJson<String>(json['sheetId']),
       driveFolderId: serializer.fromJson<String?>(json['driveFolderId']),
@@ -225,6 +258,7 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
+      'libraryName': serializer.toJson<String>(libraryName),
       'userId': serializer.toJson<String>(userId),
       'sheetId': serializer.toJson<String>(sheetId),
       'driveFolderId': serializer.toJson<String?>(driveFolderId),
@@ -234,12 +268,14 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
   }
 
   UserSessionData copyWith({
+    String? libraryName,
     String? userId,
     String? sheetId,
     Value<String?> driveFolderId = const Value.absent(),
     bool? isAdmin,
     bool? isActive,
   }) => UserSessionData(
+    libraryName: libraryName ?? this.libraryName,
     userId: userId ?? this.userId,
     sheetId: sheetId ?? this.sheetId,
     driveFolderId:
@@ -249,6 +285,8 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
   );
   UserSessionData copyWithCompanion(SessionsCompanion data) {
     return UserSessionData(
+      libraryName:
+          data.libraryName.present ? data.libraryName.value : this.libraryName,
       userId: data.userId.present ? data.userId.value : this.userId,
       sheetId: data.sheetId.present ? data.sheetId.value : this.sheetId,
       driveFolderId:
@@ -263,6 +301,7 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
   @override
   String toString() {
     return (StringBuffer('UserSessionData(')
+          ..write('libraryName: $libraryName, ')
           ..write('userId: $userId, ')
           ..write('sheetId: $sheetId, ')
           ..write('driveFolderId: $driveFolderId, ')
@@ -273,12 +312,19 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(userId, sheetId, driveFolderId, isAdmin, isActive);
+  int get hashCode => Object.hash(
+    libraryName,
+    userId,
+    sheetId,
+    driveFolderId,
+    isAdmin,
+    isActive,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is UserSessionData &&
+          other.libraryName == this.libraryName &&
           other.userId == this.userId &&
           other.sheetId == this.sheetId &&
           other.driveFolderId == this.driveFolderId &&
@@ -287,6 +333,7 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
 }
 
 class SessionsCompanion extends UpdateCompanion<UserSessionData> {
+  final Value<String> libraryName;
   final Value<String> userId;
   final Value<String> sheetId;
   final Value<String?> driveFolderId;
@@ -294,6 +341,7 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
   final Value<bool> isActive;
   final Value<int> rowid;
   const SessionsCompanion({
+    this.libraryName = const Value.absent(),
     this.userId = const Value.absent(),
     this.sheetId = const Value.absent(),
     this.driveFolderId = const Value.absent(),
@@ -302,15 +350,18 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
     this.rowid = const Value.absent(),
   });
   SessionsCompanion.insert({
+    required String libraryName,
     required String userId,
     required String sheetId,
     this.driveFolderId = const Value.absent(),
     this.isAdmin = const Value.absent(),
     this.isActive = const Value.absent(),
     this.rowid = const Value.absent(),
-  }) : userId = Value(userId),
+  }) : libraryName = Value(libraryName),
+       userId = Value(userId),
        sheetId = Value(sheetId);
   static Insertable<UserSessionData> custom({
+    Expression<String>? libraryName,
     Expression<String>? userId,
     Expression<String>? sheetId,
     Expression<String>? driveFolderId,
@@ -319,6 +370,7 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
+      if (libraryName != null) 'library_name': libraryName,
       if (userId != null) 'user_id': userId,
       if (sheetId != null) 'sheet_id': sheetId,
       if (driveFolderId != null) 'drive_folder_id': driveFolderId,
@@ -329,6 +381,7 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
   }
 
   SessionsCompanion copyWith({
+    Value<String>? libraryName,
     Value<String>? userId,
     Value<String>? sheetId,
     Value<String?>? driveFolderId,
@@ -337,6 +390,7 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
     Value<int>? rowid,
   }) {
     return SessionsCompanion(
+      libraryName: libraryName ?? this.libraryName,
       userId: userId ?? this.userId,
       sheetId: sheetId ?? this.sheetId,
       driveFolderId: driveFolderId ?? this.driveFolderId,
@@ -349,6 +403,9 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (libraryName.present) {
+      map['library_name'] = Variable<String>(libraryName.value);
+    }
     if (userId.present) {
       map['user_id'] = Variable<String>(userId.value);
     }
@@ -373,6 +430,7 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
   @override
   String toString() {
     return (StringBuffer('SessionsCompanion(')
+          ..write('libraryName: $libraryName, ')
           ..write('userId: $userId, ')
           ..write('sheetId: $sheetId, ')
           ..write('driveFolderId: $driveFolderId, ')
@@ -1142,11 +1200,11 @@ class $ScoresTable extends Scores with TableInfo<$ScoresTable, ScoreData> {
     'catalogNumber',
   );
   @override
-  late final GeneratedColumn<int> catalogNumber = GeneratedColumn<int>(
+  late final GeneratedColumn<String> catalogNumber = GeneratedColumn<String>(
     'catalog_number',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _notesMeta = const VerificationMeta('notes');
@@ -1329,7 +1387,7 @@ class $ScoresTable extends Scores with TableInfo<$ScoresTable, ScoreData> {
           )!,
       catalogNumber:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
+            DriftSqlType.string,
             data['${effectivePrefix}catalog_number'],
           )!,
       notes:
@@ -1370,7 +1428,7 @@ class ScoreData extends DataClass implements Insertable<ScoreData> {
   final String title;
   final int composerId;
   final String arranger;
-  final int catalogNumber;
+  final String catalogNumber;
   final String notes;
   final int categoryId;
   final String status;
@@ -1395,7 +1453,7 @@ class ScoreData extends DataClass implements Insertable<ScoreData> {
     map['title'] = Variable<String>(title);
     map['composer_id'] = Variable<int>(composerId);
     map['arranger'] = Variable<String>(arranger);
-    map['catalog_number'] = Variable<int>(catalogNumber);
+    map['catalog_number'] = Variable<String>(catalogNumber);
     map['notes'] = Variable<String>(notes);
     map['category_id'] = Variable<int>(categoryId);
     map['status'] = Variable<String>(status);
@@ -1431,7 +1489,7 @@ class ScoreData extends DataClass implements Insertable<ScoreData> {
       title: serializer.fromJson<String>(json['title']),
       composerId: serializer.fromJson<int>(json['composerId']),
       arranger: serializer.fromJson<String>(json['arranger']),
-      catalogNumber: serializer.fromJson<int>(json['catalogNumber']),
+      catalogNumber: serializer.fromJson<String>(json['catalogNumber']),
       notes: serializer.fromJson<String>(json['notes']),
       categoryId: serializer.fromJson<int>(json['categoryId']),
       status: serializer.fromJson<String>(json['status']),
@@ -1447,7 +1505,7 @@ class ScoreData extends DataClass implements Insertable<ScoreData> {
       'title': serializer.toJson<String>(title),
       'composerId': serializer.toJson<int>(composerId),
       'arranger': serializer.toJson<String>(arranger),
-      'catalogNumber': serializer.toJson<int>(catalogNumber),
+      'catalogNumber': serializer.toJson<String>(catalogNumber),
       'notes': serializer.toJson<String>(notes),
       'categoryId': serializer.toJson<int>(categoryId),
       'status': serializer.toJson<String>(status),
@@ -1461,7 +1519,7 @@ class ScoreData extends DataClass implements Insertable<ScoreData> {
     String? title,
     int? composerId,
     String? arranger,
-    int? catalogNumber,
+    String? catalogNumber,
     String? notes,
     int? categoryId,
     String? status,
@@ -1551,7 +1609,7 @@ class ScoresCompanion extends UpdateCompanion<ScoreData> {
   final Value<String> title;
   final Value<int> composerId;
   final Value<String> arranger;
-  final Value<int> catalogNumber;
+  final Value<String> catalogNumber;
   final Value<String> notes;
   final Value<int> categoryId;
   final Value<String> status;
@@ -1574,7 +1632,7 @@ class ScoresCompanion extends UpdateCompanion<ScoreData> {
     required String title,
     required int composerId,
     this.arranger = const Value.absent(),
-    required int catalogNumber,
+    required String catalogNumber,
     this.notes = const Value.absent(),
     required int categoryId,
     required String status,
@@ -1590,7 +1648,7 @@ class ScoresCompanion extends UpdateCompanion<ScoreData> {
     Expression<String>? title,
     Expression<int>? composerId,
     Expression<String>? arranger,
-    Expression<int>? catalogNumber,
+    Expression<String>? catalogNumber,
     Expression<String>? notes,
     Expression<int>? categoryId,
     Expression<String>? status,
@@ -1616,7 +1674,7 @@ class ScoresCompanion extends UpdateCompanion<ScoreData> {
     Value<String>? title,
     Value<int>? composerId,
     Value<String>? arranger,
-    Value<int>? catalogNumber,
+    Value<String>? catalogNumber,
     Value<String>? notes,
     Value<int>? categoryId,
     Value<String>? status,
@@ -1653,7 +1711,7 @@ class ScoresCompanion extends UpdateCompanion<ScoreData> {
       map['arranger'] = Variable<String>(arranger.value);
     }
     if (catalogNumber.present) {
-      map['catalog_number'] = Variable<int>(catalogNumber.value);
+      map['catalog_number'] = Variable<String>(catalogNumber.value);
     }
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
@@ -1960,6 +2018,7 @@ abstract class _$LibraryDatabase extends GeneratedDatabase {
 
 typedef $$SessionsTableCreateCompanionBuilder =
     SessionsCompanion Function({
+      required String libraryName,
       required String userId,
       required String sheetId,
       Value<String?> driveFolderId,
@@ -1969,6 +2028,7 @@ typedef $$SessionsTableCreateCompanionBuilder =
     });
 typedef $$SessionsTableUpdateCompanionBuilder =
     SessionsCompanion Function({
+      Value<String> libraryName,
       Value<String> userId,
       Value<String> sheetId,
       Value<String?> driveFolderId,
@@ -1986,6 +2046,11 @@ class $$SessionsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<String> get libraryName => $composableBuilder(
+    column: $table.libraryName,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get userId => $composableBuilder(
     column: $table.userId,
     builder: (column) => ColumnFilters(column),
@@ -2021,6 +2086,11 @@ class $$SessionsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<String> get libraryName => $composableBuilder(
+    column: $table.libraryName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get userId => $composableBuilder(
     column: $table.userId,
     builder: (column) => ColumnOrderings(column),
@@ -2056,6 +2126,11 @@ class $$SessionsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<String> get libraryName => $composableBuilder(
+    column: $table.libraryName,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get userId =>
       $composableBuilder(column: $table.userId, builder: (column) => column);
 
@@ -2105,6 +2180,7 @@ class $$SessionsTableTableManager
               () => $$SessionsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
+                Value<String> libraryName = const Value.absent(),
                 Value<String> userId = const Value.absent(),
                 Value<String> sheetId = const Value.absent(),
                 Value<String?> driveFolderId = const Value.absent(),
@@ -2112,6 +2188,7 @@ class $$SessionsTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SessionsCompanion(
+                libraryName: libraryName,
                 userId: userId,
                 sheetId: sheetId,
                 driveFolderId: driveFolderId,
@@ -2121,6 +2198,7 @@ class $$SessionsTableTableManager
               ),
           createCompanionCallback:
               ({
+                required String libraryName,
                 required String userId,
                 required String sheetId,
                 Value<String?> driveFolderId = const Value.absent(),
@@ -2128,6 +2206,7 @@ class $$SessionsTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SessionsCompanion.insert(
+                libraryName: libraryName,
                 userId: userId,
                 sheetId: sheetId,
                 driveFolderId: driveFolderId,
@@ -3163,7 +3242,7 @@ typedef $$ScoresTableCreateCompanionBuilder =
       required String title,
       required int composerId,
       Value<String> arranger,
-      required int catalogNumber,
+      required String catalogNumber,
       Value<String> notes,
       required int categoryId,
       required String status,
@@ -3176,7 +3255,7 @@ typedef $$ScoresTableUpdateCompanionBuilder =
       Value<String> title,
       Value<int> composerId,
       Value<String> arranger,
-      Value<int> catalogNumber,
+      Value<String> catalogNumber,
       Value<String> notes,
       Value<int> categoryId,
       Value<String> status,
@@ -3273,7 +3352,7 @@ class $$ScoresTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get catalogNumber => $composableBuilder(
+  ColumnFilters<String> get catalogNumber => $composableBuilder(
     column: $table.catalogNumber,
     builder: (column) => ColumnFilters(column),
   );
@@ -3394,7 +3473,7 @@ class $$ScoresTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get catalogNumber => $composableBuilder(
+  ColumnOrderings<String> get catalogNumber => $composableBuilder(
     column: $table.catalogNumber,
     builder: (column) => ColumnOrderings(column),
   );
@@ -3484,7 +3563,7 @@ class $$ScoresTableAnnotationComposer
   GeneratedColumn<String> get arranger =>
       $composableBuilder(column: $table.arranger, builder: (column) => column);
 
-  GeneratedColumn<int> get catalogNumber => $composableBuilder(
+  GeneratedColumn<String> get catalogNumber => $composableBuilder(
     column: $table.catalogNumber,
     builder: (column) => column,
   );
@@ -3612,7 +3691,7 @@ class $$ScoresTableTableManager
                 Value<String> title = const Value.absent(),
                 Value<int> composerId = const Value.absent(),
                 Value<String> arranger = const Value.absent(),
-                Value<int> catalogNumber = const Value.absent(),
+                Value<String> catalogNumber = const Value.absent(),
                 Value<String> notes = const Value.absent(),
                 Value<int> categoryId = const Value.absent(),
                 Value<String> status = const Value.absent(),
@@ -3636,7 +3715,7 @@ class $$ScoresTableTableManager
                 required String title,
                 required int composerId,
                 Value<String> arranger = const Value.absent(),
-                required int catalogNumber,
+                required String catalogNumber,
                 Value<String> notes = const Value.absent(),
                 required int categoryId,
                 required String status,

@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:library_app/database/library_database.dart';
 import 'package:library_app/providers/app_initializer.dart';
 import 'package:library_app/providers/session_provider.dart';
+import 'package:library_app/screens/home/home.dart';
+import 'package:library_app/shared/flashing_logo.dart';
 import 'package:library_app/shared/gradient_button.dart';
 
 class CreateSheet extends ConsumerStatefulWidget {
@@ -17,6 +19,7 @@ class CreateSheet extends ConsumerStatefulWidget {
 
 class _CreateSheetState extends ConsumerState<CreateSheet> {
   final PageController _pageController = PageController();
+  final TextEditingController _libraryNameController = TextEditingController();
   final TextEditingController _folderNameController = TextEditingController();
   final TextEditingController _sheetNameController = TextEditingController();
 
@@ -24,11 +27,14 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
   String? _sheetId;
   String? _folderName;
   String? _sheetName;
+  String? _libraryName;
   bool _validInput = true;
+  bool _isCreating = false;
 
   @override
   void dispose() {
     _pageController.dispose();
+    _libraryNameController.dispose();
     _folderNameController.dispose();
     _sheetNameController.dispose();
     super.dispose();
@@ -139,90 +145,186 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
   }
 
   Future<void> _createFolderAndSheet() async {
-    final googleSignIn = ref.read(googleSignInProvider);
-    final auth = await googleSignIn.currentUser?.authentication;
-    final token = auth?.accessToken;
+    if (_isCreating) return;
 
-    if (token == null) {
+    setState(() {
+      _isCreating = true;
+    });
+
+    try {
+      final googleSignIn = ref.read(googleSignInProvider);
+      final auth = await googleSignIn.currentUser?.authentication;
+      final token = auth?.accessToken;
+
+      if (token == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Authentication failed.")));
+        return;
+      }
+
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      };
+
+      await _createFolder(signIn: googleSignIn, authHeaders: headers);
+      await _createSheet(signIn: googleSignIn, authHeaders: headers);
+      await _createInitialHeaders(signIn: googleSignIn, authHeaders: headers);
+
       if (!mounted) return;
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(content: Text("Folder and sheet created successfully!")),
+      // );
+      final startInfo = await ref.read(appInitializerProvider.future);
+      final userId = startInfo.googleAccount!.id;
+      final session = UserSessionData(
+        libraryName: _libraryName!,
+        userId: userId,
+        sheetId: _sheetId!,
+        driveFolderId: _folderId,
+        isAdmin: true,
+        isActive: true,
+      );
+      await ref.read(sessionProvider.notifier).setSession(session);
+      if (!mounted) return;
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const Home()));
+    } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Authentication failed.")));
-      return;
+      ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCreating = false;
+        });
+      }
     }
-
-    final headers = {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    };
-
-    await _createFolder(signIn: googleSignIn, authHeaders: headers);
-    await _createSheet(signIn: googleSignIn, authHeaders: headers);
-    await _createInitialHeaders(signIn: googleSignIn, authHeaders: headers);
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Folder and sheet created successfully!")),
-    );
-    final startInfo = await ref.read(appInitializerProvider.future);
-    final userId = startInfo.googleAccount!.id;
-    final session = UserSessionData(
-      userId: userId,
-      sheetId: _sheetId!,
-      driveFolderId: _folderId,
-      isAdmin: true,
-      isActive: true,
-    );
-    await ref.read(sessionProvider.notifier).setSession(session);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color.fromRGBO(24, 24, 24, 1),
-                  Color.fromRGBO(52, 52, 52, 1),
+      body:
+          _isCreating
+              ? Center(child: FlashingLogo())
+              : Stack(
+                children: [
+                  Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color.fromRGBO(24, 24, 24, 1),
+                          Color.fromRGBO(52, 52, 52, 1),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: ShaderMask(
+                      shaderCallback: (Rect bounds) {
+                        return LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.8),
+                            Colors.white.withValues(alpha: 0.03),
+                          ],
+                        ).createShader(bounds);
+                      },
+                      blendMode: BlendMode.dstIn,
+                      child: Image.asset(
+                        'assets/img/redbull.png',
+                        height: 400,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  PageView(
+                    controller: _pageController,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      _buildLibraryNameInput(),
+                      _buildFolderNameInput(),
+                      _buildSheetNameInput(),
+                      _buildSummaryScreen(),
+                    ],
+                  ),
                 ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
               ),
-            ),
+    );
+  }
+
+  Widget _buildLibraryNameInput() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            "Please choose a name for your Library",
+            overflow: TextOverflow.visible,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineMedium,
           ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: ShaderMask(
-              shaderCallback: (Rect bounds) {
-                return LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.white.withValues(alpha: 0.8),
-                    Colors.white.withValues(alpha: 0.03),
-                  ],
-                ).createShader(bounds);
-              },
-              blendMode: BlendMode.dstIn,
-              child: Image.asset(
-                'assets/img/redbull.png',
-                height: 400,
-                fit: BoxFit.contain,
-              ),
+          SizedBox(height: 28),
+          TextField(
+            controller: _libraryNameController,
+            decoration: InputDecoration(
+              labelText: "Library Name",
+              labelStyle: Theme.of(context).textTheme.bodyMedium,
             ),
+            style: Theme.of(context).textTheme.bodyMedium,
+            textInputAction: TextInputAction.next,
           ),
-          PageView(
-            controller: _pageController,
-            physics: const NeverScrollableScrollPhysics(),
+          if (!_validInput)
+            Text(
+              "Please enter a name",
+              style: TextStyle(color: Colors.red[500]),
+            ),
+          const SizedBox(height: 32),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildFolderNameInput(),
-              _buildSheetNameInput(),
-              _buildSummaryScreen(),
+              Expanded(
+                child: GradientButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  text: Text("Back"),
+                  height: 24,
+                  colorStart: Color.fromRGBO(87, 87, 87, 1),
+                  colorEnd: Color.fromRGBO(37, 37, 37, 1),
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: GradientButton(
+                  onPressed: () {
+                    if (_libraryNameController.text.isEmpty) {
+                      setState(() {
+                        _validInput = false;
+                      });
+                    } else {
+                      setState(() {
+                        _validInput = true;
+                      });
+                      _libraryName = _libraryNameController.text;
+                      _goToNextPage();
+                    }
+                  },
+                  text: Text("Next"),
+                  height: 24,
+                ),
+              ),
             ],
           ),
         ],
@@ -263,9 +365,7 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
             children: [
               Expanded(
                 child: GradientButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
+                  onPressed: _goToPreviousPage,
                   text: Text("Back"),
                   height: 24,
                   colorStart: Color.fromRGBO(87, 87, 87, 1),
@@ -380,6 +480,10 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             SizedBox(height: 24),
+            Text(
+              "Library Name: $_libraryName",
+              style: TextStyle(color: Colors.white),
+            ),
             Text(
               "Folder Name: $_folderName",
               style: TextStyle(color: Colors.white),

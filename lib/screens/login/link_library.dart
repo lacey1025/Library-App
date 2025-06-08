@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:library_app/database/library_database.dart';
 import 'package:library_app/providers/app_initializer.dart';
+import 'package:library_app/providers/database_provider.dart';
 import 'package:library_app/providers/session_provider.dart';
-import 'package:library_app/shared/appbar.dart';
+import 'package:library_app/screens/home/home.dart';
 import 'package:library_app/shared/gradient_button.dart';
+import 'package:library_app/utils/google_sheet_importer.dart';
 
 class LinkLibraryScreen extends ConsumerStatefulWidget {
   const LinkLibraryScreen({super.key});
@@ -21,7 +23,11 @@ class _LinkLibraryScreenState extends ConsumerState<LinkLibraryScreen> {
   List<dynamic> _sheets = [];
   String? _selectedFolderId;
   String? _selectedSheetId;
+  String? _libraryName;
   bool _loading = true;
+  bool _error = false;
+  bool _validInput = true;
+  final TextEditingController _libraryNameController = TextEditingController();
   final PageController _pageController = PageController();
 
   @override
@@ -60,9 +66,13 @@ class _LinkLibraryScreenState extends ConsumerState<LinkLibraryScreen> {
         _folders = jsonDecode(folderRes.body)['files'];
         _sheets = jsonDecode(sheetRes.body)['files'];
         _loading = false;
+        _error = false;
       });
     } else {
-      print("Error fetching files: ${folderRes.body}, ${sheetRes.body}");
+      setState(() {
+        _loading = false;
+        _error = true;
+      });
     }
   }
 
@@ -70,13 +80,28 @@ class _LinkLibraryScreenState extends ConsumerState<LinkLibraryScreen> {
     final startInfo = await ref.read(appInitializerProvider.future);
     final userId = startInfo.googleAccount!.id;
     final session = UserSessionData(
+      libraryName: _libraryName!,
       userId: userId,
-      sheetId: _selectedFolderId!,
-      driveFolderId: _selectedSheetId,
+      sheetId: _selectedSheetId!,
+      driveFolderId: _selectedFolderId,
       isAdmin: true,
       isActive: true,
     );
     await ref.read(sessionProvider.notifier).setSession(session);
+
+    final authHeaders = await startInfo.googleAccount!.authHeaders;
+    final db = await ref.read(databaseProvider.future);
+
+    final importer = GoogleSheetImporter(
+      sheetId: _selectedSheetId!,
+      authHeaders: authHeaders,
+      db: db,
+    );
+    await importer.importScores();
+    if (!mounted) return;
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => Home()));
   }
 
   @override
@@ -90,11 +115,110 @@ class _LinkLibraryScreenState extends ConsumerState<LinkLibraryScreen> {
       body:
           _loading
               ? const Center(child: CircularProgressIndicator())
+              : _error
+              ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("Error loading files"),
+                    SizedBox(height: 24),
+                    GradientButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      height: 30,
+                      width: 300,
+                      text: Text(
+                        "Back",
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      colorStart: Color.fromRGBO(87, 87, 87, 1),
+                      colorEnd: Color.fromRGBO(37, 37, 37, 1),
+                    ),
+                  ],
+                ),
+              )
               : PageView(
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
-                children: [_buildSheetSelection(), _buildFolderSelection()],
+                children: [
+                  _buildLibraryNameInput(),
+                  _buildSheetSelection(),
+                  _buildFolderSelection(),
+                ],
               ),
+    );
+  }
+
+  Widget _buildLibraryNameInput() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            "Please choose a name for your Library",
+            overflow: TextOverflow.visible,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          SizedBox(height: 28),
+          TextField(
+            controller: _libraryNameController,
+            decoration: InputDecoration(
+              labelText: "Library Name",
+              labelStyle: Theme.of(context).textTheme.bodyMedium,
+            ),
+            style: Theme.of(context).textTheme.bodyMedium,
+            textInputAction: TextInputAction.next,
+          ),
+          if (!_validInput)
+            Text(
+              "Please enter a name",
+              style: TextStyle(color: Colors.red[500]),
+            ),
+          const SizedBox(height: 32),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Expanded(
+                child: GradientButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  text: Text("Back"),
+                  height: 24,
+                  colorStart: Color.fromRGBO(87, 87, 87, 1),
+                  colorEnd: Color.fromRGBO(37, 37, 37, 1),
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: GradientButton(
+                  onPressed: () {
+                    if (_libraryNameController.text.isEmpty) {
+                      setState(() {
+                        _validInput = false;
+                      });
+                    } else {
+                      setState(() {
+                        _validInput = true;
+                      });
+                      _libraryName = _libraryNameController.text;
+                      _pageController.nextPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    }
+                  },
+                  text: Text("Next"),
+                  height: 24,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

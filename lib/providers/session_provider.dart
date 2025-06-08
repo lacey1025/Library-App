@@ -20,6 +20,7 @@ class SessionNotifier extends AsyncNotifier<UserSessionData?> {
 
   Future<void> setSession(UserSessionData session) async {
     await _sessionDao.saveAndActivateSession(
+      libraryName: session.libraryName,
       userId: session.userId,
       sheetId: session.sheetId,
       driveFolderId: session.driveFolderId,

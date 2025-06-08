@@ -42,15 +42,16 @@ class ButtonCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              icon,
+              SizedBox(height: 10),
               Text(
                 title,
                 style: TextStyle(
                   fontSize: 26,
                   fontFamily: 'GI',
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              icon,
             ],
           ),
         ),

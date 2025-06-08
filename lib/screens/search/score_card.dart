@@ -32,7 +32,7 @@ class ScoreCard extends StatelessWidget {
                     ),
                   if (score.category != null)
                     Text(
-                      '${score.category!.identifier} ${score.score.catalogNumber.toString().padLeft(4, '0')}',
+                      score.score.catalogNumber,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                 ],

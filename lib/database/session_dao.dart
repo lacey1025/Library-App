@@ -14,6 +14,7 @@ class SessionDao extends DatabaseAccessor<LibraryDatabase>
   }
 
   Future<void> saveAndActivateSession({
+    required String libraryName,
     required String userId,
     required String sheetId,
     String? driveFolderId,
@@ -24,6 +25,7 @@ class SessionDao extends DatabaseAccessor<LibraryDatabase>
         sessions,
       )).write(const SessionsCompanion(isActive: Value(false)));
       final entry = SessionsCompanion(
+        libraryName: Value(libraryName),
         userId: Value(userId),
         sheetId: Value(sheetId),
         driveFolderId: Value(driveFolderId),

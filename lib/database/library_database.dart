@@ -10,6 +10,7 @@ part 'library_database.g.dart';
 
 @DataClassName('UserSessionData')
 class Sessions extends Table {
+  TextColumn get libraryName => text()();
   TextColumn get userId => text()();
   TextColumn get sheetId => text()();
   TextColumn get driveFolderId => text().nullable()();
@@ -27,7 +28,7 @@ class Scores extends Table {
   TextColumn get title => text()();
   IntColumn get composerId => integer().references(Composers, #id)();
   TextColumn get arranger => text().withDefault(const Constant(""))();
-  IntColumn get catalogNumber => integer()();
+  TextColumn get catalogNumber => text()();
   TextColumn get notes => text().withDefault(const Constant(""))();
   IntColumn get categoryId => integer().references(Categories, #id)();
   TextColumn get status => text()();
@@ -123,6 +124,19 @@ CATEGORY
 * int category_id (PK)
 * string name
 * string identifier
-* int counter
 
+SHEET HEADERS
+title | composerName | arranger | catalogNum | notes | categoryName | subcategories | status | link | changeTime
+
+insert all composers
+insert all categories - get identifier from string part of score catalogNum
+swap composer names for composer id
+swap category name for category id
+insert scores
+parse subcategories (split by comma) and group them with the categories
+insert all subcategories
+group subcategories by score
+insert all score_subcategories
+
+score originally has title, arranger, catalogNum, notes, status, link, changeTime
 */

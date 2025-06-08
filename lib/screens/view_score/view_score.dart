@@ -8,8 +8,10 @@ import 'package:library_app/providers/categories_provider.dart';
 import 'package:library_app/providers/scores_provider.dart';
 import 'package:library_app/screens/view_score/score_field.dart';
 import 'package:library_app/screens/view_score/view_edit_field.dart';
+import 'package:library_app/shared/app_drawer.dart';
 import 'package:library_app/shared/appbar.dart';
 import 'package:library_app/screens/view_score/show_dialog.dart';
+import 'package:library_app/shared/gradient_button.dart';
 
 class ViewScore extends ConsumerStatefulWidget {
   const ViewScore(this.scoreId, {super.key});
@@ -70,7 +72,7 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
 
             return Scaffold(
               appBar: CustomAppBar(title: "View"),
-
+              drawer: AppDrawer(),
               body: Column(
                 children: [
                   Container(
@@ -238,6 +240,7 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                                             )
                                             .getNewCatalogNumber(
                                               _selectedCategory!.id,
+                                              _selectedCategory!.identifier,
                                             );
                                         ref
                                             .read(
@@ -358,12 +361,10 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                             children: [
                               ViewEditField(
                                 title: "Catalog Number",
-                                item:
-                                    '${score.category!.identifier} ${score.score.catalogNumber.toString().padLeft(4, '0')}',
+                                item: score.score.catalogNumber,
                                 edit: edit,
                                 handleSubmit: () {
-                                  _controller.text =
-                                      '${score.category!.identifier} ${score.score.catalogNumber.toString().padLeft(4, '0')}';
+                                  _controller.text = score.score.catalogNumber;
                                   DialogHelper.showTextEditDialog(
                                     context: context,
                                     name: "Catalog Number",
@@ -379,9 +380,7 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                                           .read(scoresNotifierProvider.notifier)
                                           .updateScore(
                                             'catalog_number',
-                                            int.parse(
-                                              _controller.text.split(' ')[1],
-                                            ),
+                                            _controller.text,
                                             score.score.id,
                                           );
                                     },
@@ -468,40 +467,24 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                         Expanded(
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(8, 10, 4, 5),
-                            child: TextButton(
+                            child: GradientButton(
                               onPressed: () {
-                                ref
-                                    .read(scoresNotifierProvider.notifier)
-                                    .updateScoreFromObject(
-                                      resetScore.score,
-                                      resetScore.subcategories,
-                                    );
+                                if (edit == "Done") {
+                                  ref
+                                      .read(scoresNotifierProvider.notifier)
+                                      .updateScoreFromObject(
+                                        resetScore.score,
+                                        resetScore.subcategories,
+                                      );
+                                } else {
+                                  Navigator.pop(context);
+                                }
                               },
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                              ),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Color.fromRGBO(87, 87, 87, 1),
-                                      Color.fromRGBO(37, 37, 37, 1),
-                                    ],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ),
-                                  borderRadius: const BorderRadius.all(
-                                    Radius.circular(10),
-                                  ),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  "Reset",
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
+                              colorStart: Color.fromRGBO(87, 87, 87, 1),
+                              colorEnd: Color.fromRGBO(37, 37, 37, 1),
+                              text: Text(
+                                (edit == "Done") ? "Reset" : "Back",
+                                style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ),
                           ),
@@ -510,7 +493,7 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                         Expanded(
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(4, 10, 8, 5),
-                            child: TextButton(
+                            child: GradientButton(
                               onPressed: () {
                                 showDialog(
                                   context: context,
@@ -560,31 +543,9 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                                   },
                                 );
                               },
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                              ),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Color.fromRGBO(185, 0, 0, 1),
-                                      Color.fromRGBO(100, 0, 0, 1),
-                                    ],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ),
-                                  borderRadius: const BorderRadius.all(
-                                    Radius.circular(10),
-                                  ),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  "Delete Score",
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
+                              text: Text(
+                                "Delete Score",
+                                style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ),
                           ),

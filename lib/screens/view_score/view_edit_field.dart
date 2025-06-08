@@ -24,9 +24,10 @@ class ViewEditField extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                title,
-                style: Theme.of(context).textTheme.titleLarge,
+                title.toUpperCase(),
+                // style: Theme.of(context).textTheme.titleLarge,
                 overflow: TextOverflow.visible,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 softWrap: true,
               ),
               item is String

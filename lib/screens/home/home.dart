@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:library_app/screens/create/create_score.dart';
 import 'package:library_app/screens/home/button_card.dart';
 import 'package:library_app/screens/search/search.dart';
+import 'package:library_app/shared/app_drawer.dart';
 import 'package:library_app/shared/appbar.dart';
 
 class Home extends StatelessWidget {
@@ -12,6 +13,7 @@ class Home extends StatelessWidget {
     final height = MediaQuery.of(context).size.height;
     return Scaffold(
       appBar: CustomAppBar(title: '34ID Band Library'),
+      drawer: AppDrawer(),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

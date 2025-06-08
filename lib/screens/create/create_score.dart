@@ -7,6 +7,7 @@ import 'package:library_app/models/status.dart';
 import 'package:library_app/providers/categories_provider.dart';
 import 'package:library_app/providers/scores_provider.dart';
 import 'package:library_app/screens/home/home.dart';
+import 'package:library_app/shared/app_drawer.dart';
 import 'package:library_app/shared/gradient_button.dart';
 import 'package:library_app/shared/status_card.dart';
 import 'package:library_app/shared/appbar.dart';
@@ -88,29 +89,33 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
     super.dispose();
   }
 
-  Future<String?> catalogValidiator(value) async {
+  Future<String?> catalogValidiator(String? value) async {
     if (value == null || value.isEmpty) {
       if (_selectedCategory != null) {
-        _catalogNumber =
-            "${_selectedCategory!.category.identifier} ${await ref.read(scoresNotifierProvider.notifier).getNewCatalogNumber(_selectedCategory!.category.id)}";
+        _catalogNumber = await ref
+            .read(scoresNotifierProvider.notifier)
+            .getNewCatalogNumber(
+              _selectedCategory!.category.id,
+              _selectedCategory!.category.identifier,
+            );
       }
       return null;
     }
-    final regex = RegExp(r'^[A-Za-z]+ \d{1,4}$');
+    final regex = RegExp(r'^[A-Za-z]+\d{1,4}$');
     if (!regex.hasMatch(value)) {
-      return 'Invalid format. Use: "Text 1234" \n(letters + space + up to 4 digits)';
+      return 'Invalid format. Use: "Text1234" \n(letters + up to 4 digits)';
     }
-    final splitNumber = value.split(' ');
-    if (splitNumber[0].trim().toUpperCase() !=
+    final valueIdentifier = value.substring(
+      0,
+      _selectedCategory!.category.identifier.length,
+    );
+    if (valueIdentifier.trim().toUpperCase() !=
         _selectedCategory!.category.identifier) {
       return '${_selectedCategory!.category.name} numbers must start with ${_selectedCategory!.category.identifier}';
     }
     final isUnique = await ref
         .read(scoresNotifierProvider.notifier)
-        .checkCatalogNumber(
-          int.parse(splitNumber[1]),
-          _selectedCategory!.category.id,
-        );
+        .checkCatalogNumber(value, _selectedCategory!.category.id);
     if (!isUnique) {
       return 'Catalog number has already been used';
     }
@@ -148,40 +153,50 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                   "Title: $_title",
                   softWrap: true,
                   overflow: TextOverflow.visible,
+                  style: TextStyle(fontWeight: FontWeight.w500),
                 ),
                 Text(
                   "Composer: $_composer",
                   softWrap: true,
                   overflow: TextOverflow.visible,
+                  style: TextStyle(fontWeight: FontWeight.w500),
                 ),
                 if (_arranger != null && _arranger!.isNotEmpty)
                   Text(
                     "Arranger: $_arranger",
                     softWrap: true,
                     overflow: TextOverflow.visible,
+                    style: TextStyle(fontWeight: FontWeight.w500),
                   ),
                 Text(
                   "Catalog Number: $_catalogNumber",
                   softWrap: true,
                   overflow: TextOverflow.visible,
+                  style: TextStyle(fontWeight: FontWeight.w500),
                 ),
                 Text(
                   "Category: ${_selectedCategory!.category.name}",
                   softWrap: true,
                   overflow: TextOverflow.visible,
+                  style: TextStyle(fontWeight: FontWeight.w500),
                 ),
                 if (_selectedSubcategories.isNotEmpty)
                   Text(
                     "Subcategories: ${_selectedSubcategories.map((s) => s.name).join(', ')}",
                     softWrap: true,
                     overflow: TextOverflow.visible,
+                    style: TextStyle(fontWeight: FontWeight.w500),
                   ),
-                Text("Status: ${_selectedStatus.title}"),
+                Text(
+                  "Status: ${_selectedStatus.title}",
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
                 if (_notes != null && _notes!.isNotEmpty)
                   Text(
                     "Notes: $_notes",
                     softWrap: true,
                     overflow: TextOverflow.visible,
+                    style: TextStyle(fontWeight: FontWeight.w500),
                   ),
               ],
             ),
@@ -214,9 +229,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                           (_arranger != null && _arranger!.isNotEmpty)
                               ? Value(_arranger!)
                               : Value.absent(),
-                      catalogNumber: Value(
-                        int.parse(_catalogNumber!.split(' ')[1]),
-                      ),
+                      catalogNumber: Value(_catalogNumber!),
                       notes:
                           (_notes != null && _notes!.isNotEmpty)
                               ? Value(_notes!)
@@ -269,7 +282,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
       },
       child: Scaffold(
         appBar: CustomAppBar(title: "Add New Score"),
-
+        drawer: AppDrawer(),
         body: Column(
           children: [
             Expanded(

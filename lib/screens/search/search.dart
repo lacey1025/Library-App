@@ -4,6 +4,7 @@ import 'package:library_app/models/category_with_details.dart';
 import 'package:library_app/providers/categories_provider.dart';
 import 'package:library_app/providers/scores_provider.dart';
 import 'package:library_app/screens/search/score_card.dart';
+import 'package:library_app/shared/app_drawer.dart';
 import 'package:library_app/shared/appbar.dart';
 
 class Search extends ConsumerStatefulWidget {
@@ -47,6 +48,7 @@ class _SearchState extends ConsumerState<Search> with TickerProviderStateMixin {
 
     return Scaffold(
       appBar: CustomAppBar(title: "Search"),
+      drawer: AppDrawer(),
       body: Container(
         padding: const EdgeInsets.all(16),
         child: categoriesAsync.when(
@@ -86,41 +88,6 @@ class _SearchState extends ConsumerState<Search> with TickerProviderStateMixin {
       ),
     );
   }
-
-  // @override
-  // Widget build(BuildContext context) {
-  //   final scores = ref.watch(scoresNotifierProvider);
-  //   final categories = ref.watch(categoryNotifierProvider);
-
-  //   return Scaffold(
-  //     appBar: CustomAppBar(title: "Search"),
-  //     body: Container(
-  //       padding: const EdgeInsets.all(16),
-  //       child: Column(
-  //         children: [
-  //           AnimatedSize(
-  //             duration: const Duration(milliseconds: 300),
-  //             curve: Curves.easeInOut,
-  //             child:
-  //                 _atTop
-  //                     ? _buildSearchOptions(categories)
-  //                     : const SizedBox.shrink(),
-  //           ),
-  //           const SizedBox(height: 5),
-  //           Expanded(
-  //             child: ListView.builder(
-  //               controller: _scrollController,
-  //               itemCount: scores.length,
-  //               itemBuilder: (_, index) {
-  //                 return ScoreCard(score: scores[index]);
-  //               },
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
 
   Widget _buildSearchOptions(List<CategoryWithDetails> categories) {
     return Column(
