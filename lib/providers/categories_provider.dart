@@ -9,7 +9,7 @@ class CategoriesProvider extends AsyncNotifier<List<CategoryWithDetails>> {
 
   @override
   Future<List<CategoryWithDetails>> build() async {
-    final db = await ref.watch(databaseProvider.future);
+    final db = ref.watch(databaseProvider);
     _categoryDao = CategoryDao(db);
     return await _categoryDao.getAllCategories();
   }

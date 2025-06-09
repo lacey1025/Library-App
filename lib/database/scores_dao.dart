@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/rendering.dart';
 import 'package:library_app/models/score_with_details.dart';
 import 'library_database.dart';
 
@@ -130,88 +131,105 @@ class ScoresDao extends DatabaseAccessor<LibraryDatabase>
     });
   }
 
+  Future<void> deleteAllScores() async {
+    delete(scores).go();
+  }
+
   Future<void> deleteScoreSubcategories(int scoreId) async {
     await (delete(scoreSubcategories)
       ..where((s) => s.scoreId.equals(scoreId))).go();
   }
 
   Future<List<ScoreData>> insertScoresBatch(
-    List<ScoresCompanion> scoresList,
-  ) async {
-    if (scoresList.isEmpty) {
-      return [];
+    List<ScoresCompanion> scoresList, {
+    int chunkSize = 50,
+  }) async {
+    if (scoresList.isEmpty) return [];
+
+    final List<ScoreData> allResults = [];
+
+    for (int i = 0; i < scoresList.length; i += chunkSize) {
+      final chunk = scoresList.sublist(
+        i,
+        (i + chunkSize > scoresList.length) ? scoresList.length : i + chunkSize,
+      );
+
+      final buffer = StringBuffer();
+      final args = <Object?>[];
+
+      final columns = [
+        'title',
+        'composer_id',
+        'arranger',
+        'catalog_number',
+        'notes',
+        'category_id',
+        'status',
+        'link',
+        'change_time',
+      ];
+
+      buffer.write('INSERT INTO scores (');
+      buffer.write(columns.join(', '));
+      buffer.write(') VALUES ');
+
+      for (int j = 0; j < chunk.length; j++) {
+        final s = chunk[j];
+        if (j != 0) buffer.write(', ');
+
+        buffer.write('(');
+        buffer.write(List.filled(columns.length, '?').join(', '));
+        buffer.write(')');
+
+        args.addAll([
+          s.title.value,
+          s.composerId.value,
+          s.arranger.present ? s.arranger.value : "",
+          s.catalogNumber.value,
+          s.notes.present ? s.notes.value : "",
+          s.categoryId.value,
+          s.status.value,
+          s.link.present ? s.link.value : null,
+          s.changeTime.present ? s.changeTime.value : DateTime.now(),
+        ]);
+      }
+
+      buffer.write(' RETURNING *;');
+
+      try {
+        final results =
+            await customSelect(
+              buffer.toString(),
+              variables: args.map((v) => Variable(v)).toList(),
+              readsFrom: {scores},
+            ).get();
+
+        final inserted =
+            results.map((row) {
+              final data = row.data;
+              return ScoreData(
+                id: data['id'] as int,
+                title: data['title'] as String,
+                composerId: data['composer_id'] as int,
+                arranger: data['arranger'] as String,
+                catalogNumber: data['catalog_number'] as String,
+                notes: data['notes'] as String,
+                categoryId: data['category_id'] as int,
+                status: data['status'] as String,
+                link: data['link'] as String?,
+                changeTime: DateTime.fromMillisecondsSinceEpoch(
+                  (data['change_time'] as int) * 1000,
+                ),
+              );
+            }).toList();
+
+        allResults.addAll(inserted);
+      } catch (e) {
+        debugPrint("Failed to add scores to database: $e");
+        return [];
+      }
     }
-
-    final buffer = StringBuffer();
-    final args = <Object?>[];
-
-    final columns = [
-      'title',
-      'composer_id',
-      'arranger',
-      'catalog_number',
-      'notes',
-      'category_id',
-      'status',
-      'link',
-      'change_time',
-    ];
-
-    buffer.write('INSERT INTO scores (');
-    buffer.write(columns.join(', '));
-    buffer.write(') VALUES ');
-
-    for (int i = 0; i < scoresList.length; i++) {
-      final s = scoresList[i];
-      if (i != 0) buffer.write(', ');
-
-      buffer.write('(');
-      buffer.write(List.filled(columns.length, '?').join(', '));
-      buffer.write(')');
-
-      args.addAll([
-        s.title.value,
-        s.composerId.value,
-        s.arranger.present ? s.arranger.value : "",
-        s.catalogNumber.value,
-        s.notes.present ? s.notes.value : "",
-        s.categoryId.value,
-        s.status.value,
-        s.link.present ? s.link.value : null,
-        s.changeTime.present ? s.changeTime.value : DateTime.now(),
-      ]);
-    }
-
-    buffer.write(' RETURNING *;');
-
-    try {
-      final results =
-          await customSelect(
-            buffer.toString(),
-            variables: args.map((v) => Variable(v)).toList(),
-            readsFrom: {scores},
-          ).get();
-
-      return results.map((row) {
-        final data = row.data;
-        return ScoreData(
-          id: data['id'] as int,
-          title: data['title'] as String,
-          composerId: data['composer_id'] as int,
-          arranger: data['arranger'] as String,
-          catalogNumber: data['catalog_number'] as String,
-          notes: data['notes'] as String,
-          categoryId: data['category_id'] as int,
-          status: data['status'] as String,
-          link: data['link'] as String?,
-          changeTime: DateTime.fromMillisecondsSinceEpoch(
-            (data['change_time'] as int) * 1000,
-          ),
-        );
-      }).toList();
-    } catch (e) {
-      return [];
-    }
+    return allResults;
   }
 
   Future<ComposerData?> getComposerByName(String name) async {
@@ -237,17 +255,54 @@ class ScoresDao extends DatabaseAccessor<LibraryDatabase>
     return select(composers).get();
   }
 
+  Future<void> deleteAllComposers() async {
+    delete(composers).go();
+  }
+
   Future<List<ComposerData>> bulkInsertComposers(Set<String> names) async {
     if (names.isEmpty) return [];
-    await batch((batch) {
-      batch.insertAll(
-        composers,
-        names.map((n) => ComposersCompanion(name: Value(n))).toList(),
-        mode: InsertMode.insertOrReplace,
+
+    final db = attachedDatabase;
+    const chunkSize = 50;
+    final allNames = names.toList();
+
+    // Insert composers in chunks
+    for (var i = 0; i < allNames.length; i += chunkSize) {
+      final chunk = allNames.sublist(
+        i,
+        (i + chunkSize > allNames.length) ? allNames.length : i + chunkSize,
       );
-    });
-    return await (select(composers)
-      ..where((c) => c.name.isIn(names.toList()))).get();
+
+      final placeholders = List.filled(chunk.length, '(?)').join(',');
+      final sql =
+          'INSERT OR REPLACE INTO composers (name) VALUES $placeholders';
+
+      await db.customStatement(sql, chunk);
+    }
+
+    // Select inserted composers in chunks too
+    final results = <ComposerData>[];
+
+    for (var i = 0; i < allNames.length; i += chunkSize) {
+      final chunk = allNames.sublist(
+        i,
+        (i + chunkSize > allNames.length) ? allNames.length : i + chunkSize,
+      );
+
+      final selectPlaceholders = List.filled(chunk.length, '?').join(',');
+      final rows =
+          await db
+              .customSelect(
+                'SELECT * FROM composers WHERE name IN ($selectPlaceholders)',
+                variables:
+                    chunk.map((name) => Variable.withString(name)).toList(),
+              )
+              .get();
+
+      results.addAll(rows.map((row) => db.composers.map(row.data)));
+    }
+
+    return results;
   }
 
   // Returns a string representation of the next available catalog number
@@ -288,7 +343,6 @@ class ScoresDao extends DatabaseAccessor<LibraryDatabase>
     return existingCatalog == null;
   }
 
-  //   Future<bool> checkCatalogNumber(int catalogNumber, int categoryId) async {
   //     final query = select(scores)..where(
   //       (s) =>
   //           s.categoryId.equals(categoryId) &

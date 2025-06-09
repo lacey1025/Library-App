@@ -55,32 +55,52 @@ class CategoryDao extends DatabaseAccessor<LibraryDatabase>
   ) async {
     if (nameToIdentifier.isEmpty) return [];
 
-    await batch((batch) {
-      batch.insertAll(
-        categories,
-        nameToIdentifier.entries
-            .map(
-              (e) => CategoriesCompanion(
-                name: Value(e.key),
-                identifier: Value(e.value),
-              ),
-            )
-            .toList(),
-        mode: InsertMode.insertOrReplace,
+    final variables = <Variable<Object>>[];
+
+    for (final entry in nameToIdentifier.entries) {
+      variables.add(Variable<String>(entry.key));
+      variables.add(Variable<String>(entry.value));
+    }
+
+    final valuePlaceholders = List.generate(
+      nameToIdentifier.length,
+      (i) => '(\$${i * 2 + 1}, \$${i * 2 + 2})',
+    ).join(', ');
+
+    final sql = '''
+    INSERT INTO categories (name, identifier)
+    VALUES $valuePlaceholders
+    ON CONFLICT(name) DO UPDATE SET identifier = excluded.identifier
+    RETURNING id, name, identifier
+  ''';
+
+    final result = await customSelect(sql, variables: variables).get();
+
+    return result.map((row) {
+      return CategoryData(
+        id: row.read<int>('id'),
+        name: row.read<String>('name'),
+        identifier: row.read<String>('identifier'),
       );
-    });
-    return await (select(categories)
-      ..where((c) => c.name.isIn(nameToIdentifier.keys.toList()))).get();
+    }).toList();
   }
 
   Future<void> deleteCategory(String name) async {
     await (delete(categories)..where((c) => c.name.equals(name))).go();
   }
 
+  Future<void> deleteAllCategories() async {
+    delete(categories).go();
+  }
+
   Future<SubcategoryData> addSubcategory(
     SubcategoriesCompanion subcategory,
   ) async {
     return await into(subcategories).insertReturning(subcategory);
+  }
+
+  Future<void> deleteAllSubcategories() async {
+    delete(subcategories).go();
   }
 
   Future<List<SubcategoryData>> bulkInserSubcategories(
@@ -125,10 +145,4 @@ class CategoryDao extends DatabaseAccessor<LibraryDatabase>
     return (select(categories)
       ..where((c) => c.id.equals(categoryId))).getSingleOrNull();
   }
-
-  // String getNewId() {
-  //   String id = '$_identifier ${_counter.toString().padLeft(4, '0')}';
-  //   counter++;
-  //   return id;
-  // }
 }

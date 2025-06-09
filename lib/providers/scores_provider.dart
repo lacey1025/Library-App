@@ -10,7 +10,7 @@ class ScoresProvider extends AsyncNotifier<List<ScoreWithDetails>> {
 
   @override
   Future<List<ScoreWithDetails>> build() async {
-    final db = await ref.watch(databaseProvider.future);
+    final db = ref.watch(databaseProvider);
     _scoresDao = ScoresDao(db);
     return await _scoresDao.getAllScores();
   }

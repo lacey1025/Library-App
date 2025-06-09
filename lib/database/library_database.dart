@@ -91,6 +91,15 @@ class LibraryDatabase extends _$LibraryDatabase {
       ),
     );
   }
+
+  // make sure this runs in a transaction
+  Future<void> clearAllTables() async {
+    await scoreSubcategoriesDao.deleteAllScoreSubcategories();
+    await categoryDao.deleteAllSubcategories();
+    await scoresDao.deleteAllScores();
+    await categoryDao.deleteAllCategories();
+    await scoresDao.deleteAllComposers();
+  }
 }
 
 /*
@@ -139,4 +148,5 @@ group subcategories by score
 insert all score_subcategories
 
 score originally has title, arranger, catalogNum, notes, status, link, changeTime
+
 */

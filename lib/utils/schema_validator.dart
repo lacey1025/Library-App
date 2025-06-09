@@ -1,8 +1,11 @@
+import 'package:library_app/utils/header_helper.dart';
+
 class ImportError {
   final int rowIndex;
+  final int? cellIndex;
   final String message;
 
-  ImportError({required this.rowIndex, required this.message});
+  ImportError({required this.rowIndex, this.cellIndex, required this.message});
 
   @override
   String toString() => "Row $rowIndex: $message";
@@ -18,74 +21,110 @@ class RowValidator {
     'digital only',
   ];
 
-  List<ImportError> validateRow(List<dynamic> row, int rowIndex) {
+  List<ImportError> validateRow(
+    List<dynamic> row,
+    int rowIndex,
+    HeaderHelper header,
+  ) {
     final errors = <ImportError>[];
 
-    final title = getCell(row, 0);
-    final composer = getCell(row, 1);
-    final catalogNumber = getCell(row, 3);
-    final category = getCell(row, 5);
-    final subCategories = getCell(row, 6);
-    final status = getCell(row, 7);
-    final changeTime = getCell(row, 9);
+    final title = header.getCell(row, 'title');
+    final composer = header.getCell(row, 'composer');
+    final catalogNumber = header.getCell(row, 'catalog number');
+    final category = header.getCell(row, 'category');
+    final subCategories = header.getCell(row, 'subcategories');
+    final status = header.getCell(row, 'status');
+    final changeTime = header.getCell(row, 'change time');
 
-    if (title.isEmpty) {
-      errors.add(ImportError(rowIndex: rowIndex, message: "Missing title."));
-    }
-
-    if (composer.isEmpty) {
-      errors.add(ImportError(rowIndex: rowIndex, message: "Missing composer."));
-    }
-
-    if (catalogNumber.isEmpty) {
-      errors.add(
-        ImportError(rowIndex: rowIndex, message: "Missing catalog number"),
-      );
-    } else if (!RegExp(r'^[A-Za-z]+\d{1,4}$').hasMatch(catalogNumber)) {
+    if (title.cell.isEmpty) {
       errors.add(
         ImportError(
           rowIndex: rowIndex,
-          message:
-              'Invalid catalog number format: "$catalogNumber". Use: "Text1234" (letters + up to 4 digits)',
+          cellIndex: title.index,
+          message: "Missing title.",
         ),
       );
     }
 
-    if (category.isEmpty) {
-      errors.add(ImportError(rowIndex: rowIndex, message: "Missing category."));
-    }
-
-    if (status.isNotEmpty && !allowedStatuses.contains(status.toLowerCase())) {
+    if (composer.cell.isEmpty) {
       errors.add(
         ImportError(
           rowIndex: rowIndex,
-          message:
-              "Unknown status: '$status'. Must be one of: ${allowedStatuses.join(', ')}.",
+          cellIndex: composer.index,
+          message: "Missing composer.",
         ),
       );
-    } else if (status.isEmpty) {
-      errors.add(ImportError(rowIndex: rowIndex, message: "Missing status."));
     }
 
-    if (changeTime.isNotEmpty && DateTime.tryParse(changeTime) == null) {
+    if (catalogNumber.cell.isEmpty) {
       errors.add(
         ImportError(
           rowIndex: rowIndex,
+          cellIndex: catalogNumber.index,
+          message: "Missing catalog number",
+        ),
+      );
+    } else if (!RegExp(r'^[A-Za-z]+\d{1,4}$').hasMatch(catalogNumber.cell)) {
+      errors.add(
+        ImportError(
+          rowIndex: rowIndex,
+          cellIndex: catalogNumber.index,
+          message:
+              'Invalid catalog number format: "${catalogNumber.cell}".\nUse: "Text1234" (letters + up to 4 digits)',
+        ),
+      );
+    }
+
+    if (category.cell.isEmpty) {
+      errors.add(
+        ImportError(
+          rowIndex: rowIndex,
+          cellIndex: category.index,
+          message: "Missing category.",
+        ),
+      );
+    }
+
+    if (status.cell.isNotEmpty &&
+        !allowedStatuses.contains(status.cell.toLowerCase())) {
+      errors.add(
+        ImportError(
+          rowIndex: rowIndex,
+          cellIndex: status.index,
+          message:
+              'Unknown status: "${status.cell}".\nMust be one of: ${allowedStatuses.join(', ')}.',
+        ),
+      );
+    } else if (status.cell.isEmpty) {
+      errors.add(
+        ImportError(
+          rowIndex: rowIndex,
+          cellIndex: status.index,
+          message: "Missing status.",
+        ),
+      );
+    }
+
+    if (changeTime.cell.isNotEmpty &&
+        DateTime.tryParse(changeTime.cell) == null) {
+      errors.add(
+        ImportError(
+          rowIndex: rowIndex,
+          cellIndex: changeTime.index,
           message: "Improperly formatted change time. Try deleting",
         ),
       );
     }
-    if (subCategories.contains('/')) {
+    if (subCategories.cell.contains('/')) {
       errors.add(
         ImportError(
           rowIndex: rowIndex,
-          message: "Please seperate subcategories with a comma",
+          cellIndex: subCategories.index,
+          message: "Please separate subcategories with a comma.",
         ),
       );
     }
+
     return errors;
   }
-
-  String getCell(List row, int index) =>
-      (index < row.length) ? row[index]?.toString().trim() ?? '' : '';
 }

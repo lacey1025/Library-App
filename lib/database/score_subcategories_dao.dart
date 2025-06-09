@@ -31,13 +31,21 @@ class ScoreSubcategoriesDao extends DatabaseAccessor<LibraryDatabase>
   ) async {
     if (links.isEmpty) return;
 
-    await batch((batch) {
-      batch.insertAll(
-        scoreSubcategories,
-        links,
-        mode: InsertMode.insertOrIgnore,
+    const chunkSize = 100; // Adjust based on column count
+    for (var i = 0; i < links.length; i += chunkSize) {
+      final chunk = links.sublist(
+        i,
+        i + chunkSize > links.length ? links.length : i + chunkSize,
       );
-    });
+
+      await batch((batch) {
+        batch.insertAll(
+          scoreSubcategories,
+          chunk,
+          mode: InsertMode.insertOrIgnore,
+        );
+      });
+    }
   }
 
   Future<void> removeSubcategoryFromScore(
@@ -47,5 +55,9 @@ class ScoreSubcategoriesDao extends DatabaseAccessor<LibraryDatabase>
     await (delete(scoreSubcategories)..where(
       (s) => s.scoreId.equals(scoreId) & s.subcategoryId.equals(subcategoryId),
     )).go();
+  }
+
+  Future<void> deleteAllScoreSubcategories() async {
+    delete(scoreSubcategories).go();
   }
 }

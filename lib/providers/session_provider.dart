@@ -13,7 +13,7 @@ class SessionNotifier extends AsyncNotifier<UserSessionData?> {
 
   @override
   Future<UserSessionData?> build() async {
-    final db = await ref.watch(databaseProvider.future);
+    final db = ref.watch(databaseProvider);
     _sessionDao = SessionDao(db);
     return _sessionDao.getCurrentSession();
   }

@@ -68,7 +68,6 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
     );
 
     if (folderResponse.statusCode != 200) {
-      print(folderResponse.body);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -92,7 +91,6 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
     );
 
     if (sheetResponse.statusCode != 200) {
-      print(sheetResponse.body);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -101,7 +99,6 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
     }
 
     _sheetId = jsonDecode(sheetResponse.body)['spreadsheetId'];
-    print("Sheet created: $_sheetId");
 
     await http.patch(
       Uri.parse(
