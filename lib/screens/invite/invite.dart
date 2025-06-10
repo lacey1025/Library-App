@@ -29,6 +29,57 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
     super.dispose();
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: CustomAppBar(title: "Invite User"),
+      drawer: AppDrawer(),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text("Enter the user's Google account email:"),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _emailController,
+                style: TextStyle(color: Colors.white),
+                decoration: const InputDecoration(labelText: "Email"),
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 20),
+              GradientButton(
+                onPressed: _isSending ? null : _sendInvite,
+                text:
+                    _isSending
+                        ? const CircularProgressIndicator()
+                        : const Text("Send Invite"),
+              ),
+              if (_status != null) ...[
+                const SizedBox(height: 20),
+                Text(_status!),
+              ],
+              if (_status == "Failed to send email") ...[
+                Text("Please provide new user with the following link:"),
+                GestureDetector(
+                  onTap: _copyToClipboard,
+                  child: Text(
+                    '$_inviteLink',
+                    style: TextStyle(
+                      overflow: TextOverflow.visible,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _sendInvite() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) return;
@@ -123,63 +174,20 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: CustomAppBar(title: "Invite User"),
-      drawer: AppDrawer(),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text("Enter the user's Google account email:"),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _emailController,
-                style: TextStyle(color: Colors.white),
-                decoration: const InputDecoration(labelText: "Email"),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 20),
-              GradientButton(
-                onPressed: _isSending ? null : _sendInvite,
-                text:
-                    _isSending
-                        ? const CircularProgressIndicator()
-                        : const Text("Send Invite"),
-              ),
-              if (_status != null) ...[
-                const SizedBox(height: 20),
-                Text(_status!),
-              ],
-              if (_status == "Failed to send email") ...[
-                Text("Please provide new user with the following link:"),
-                GestureDetector(
-                  child: Text(
-                    '$_inviteLink',
-                    style: TextStyle(
-                      overflow: TextOverflow.visible,
-                      color: Colors.blue,
-                    ),
-                  ),
-                  onTap: () {
-                    Clipboard.setData(ClipboardData(text: _inviteLink!));
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Invite link copied to clipboard.'),
-                        ),
-                      );
-                    }
-                  },
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
+  Future<void> _copyToClipboard() async {
+    try {
+      await Clipboard.setData(ClipboardData(text: _inviteLink!));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invite link copied to clipboard.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Can't copy to clipboard.")));
+      }
+    }
   }
 }

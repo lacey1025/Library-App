@@ -84,34 +84,7 @@ class _JoinLibraryScreenState extends ConsumerState<JoinLibraryScreen> {
                 ),
                 const SizedBox(height: 60),
                 GradientButton(
-                  onPressed: () async {
-                    final account =
-                        await ref.read(googleSignInProvider).signInSilently();
-                    if (mounted && account == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Not signed in")),
-                      );
-                      return;
-                    }
-
-                    final session = UserSessionData(
-                      libraryName: widget.libraryName,
-                      userId: account!.id,
-                      sheetId: widget.sheetId,
-                      driveFolderId: widget.folderId,
-                      isAdmin: false,
-                      isActive: true,
-                    );
-
-                    await ref
-                        .read(sessionProvider.notifier)
-                        .setSession(session);
-
-                    if (!mounted) return;
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => Home()),
-                    );
-                  },
+                  onPressed: _onJoinButtonPress,
                   text: const Text(
                     "Join",
                     style: TextStyle(
@@ -127,5 +100,31 @@ class _JoinLibraryScreenState extends ConsumerState<JoinLibraryScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _onJoinButtonPress() async {
+    final account = await ref.read(googleSignInProvider).signInSilently();
+    if (mounted && account == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Not signed in")));
+      return;
+    }
+
+    final session = UserSessionData(
+      libraryName: widget.libraryName,
+      userId: account!.id,
+      sheetId: widget.sheetId,
+      driveFolderId: widget.folderId,
+      isAdmin: false,
+      isActive: true,
+    );
+
+    await ref.read(sessionProvider.notifier).setSession(session);
+
+    if (!mounted) return;
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => Home()));
   }
 }

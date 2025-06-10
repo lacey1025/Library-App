@@ -25,7 +25,6 @@ class ViewEditField extends StatelessWidget {
             children: [
               Text(
                 title.toUpperCase(),
-                // style: Theme.of(context).textTheme.titleLarge,
                 overflow: TextOverflow.visible,
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 softWrap: true,

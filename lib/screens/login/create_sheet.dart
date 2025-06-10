@@ -171,9 +171,6 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
       await _createInitialHeaders(signIn: googleSignIn, authHeaders: headers);
 
       if (!mounted) return;
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   const SnackBar(content: Text("Folder and sheet created successfully!")),
-      // );
       final startInfo = await ref.read(appInitializerProvider.future);
       final userId = startInfo.googleAccount!.id;
       final session = UserSessionData(

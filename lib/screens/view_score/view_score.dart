@@ -32,19 +32,169 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
   String edit = "Edit";
   bool _initialized = false;
 
-  // @override
-  // initState() {
-  //   super.initState();
-  //   resetScore = widget.score.clone();
-  //   _selectedCategory = widget.score.category;
-  //   _selectedSubcategories.addAll(widget.score.subcategories!);
-  //   _selectedStatus = widget.score.status;
-  // }
-
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  void _titleSubmit(ScoreData score) {
+    _controller.text = score.title;
+    DialogHelper.showTextEditDialog(
+      context: context,
+      name: "Title",
+      controller: _controller,
+      validator:
+          () => _controller.text.isEmpty ? "Title cannot be empty" : null,
+      handleSubmit: () {
+        ref
+            .read(scoresNotifierProvider.notifier)
+            .updateScore('title', _controller.text, score.id);
+      },
+    );
+  }
+
+  void _composerSubmit(ScoreWithDetails score) {
+    _controller.text = (score.composer != null) ? score.composer!.name : "";
+    DialogHelper.showTextEditDialog(
+      context: context,
+      controller: _controller,
+      name: "Composer",
+      validator:
+          () => _controller.text.isEmpty ? "Composer cannot be empty" : null,
+      handleSubmit: () async {
+        ComposerData? composer = await ref
+            .read(scoresNotifierProvider.notifier)
+            .getComposer(_controller.text);
+        composer ??= await ref
+            .read(scoresNotifierProvider.notifier)
+            .addComposer(_controller.text);
+        ref
+            .read(scoresNotifierProvider.notifier)
+            .updateScore('composer', composer.id, score.score.id);
+      },
+    );
+  }
+
+  void _arrangerSubmit(ScoreData score) {
+    _controller.text = score.arranger;
+    DialogHelper.showTextEditDialog(
+      context: context,
+      controller: _controller,
+      name: "Arranger",
+      validator: () => null,
+      handleSubmit: () {
+        ref
+            .read(scoresNotifierProvider.notifier)
+            .updateScore('arranger', _controller.text, score.id);
+      },
+    );
+  }
+
+  void _categorySubmit(ScoreWithDetails score) async {
+    if (score.category != _selectedCategory) {
+      _selectedSubcategories.clear();
+      ref
+          .read(scoresNotifierProvider.notifier)
+          .updateScore('category', _selectedCategory!.id, score.score.id);
+      final newCatalogNum = await ref
+          .read(scoresNotifierProvider.notifier)
+          .getNewCatalogNumber(
+            _selectedCategory!.id,
+            _selectedCategory!.identifier,
+          );
+      ref
+          .read(scoresNotifierProvider.notifier)
+          .updateScore('catalog_number', newCatalogNum, score.score.id);
+    }
+  }
+
+  void _subCategorySubmit(ScoreWithDetails score) async {
+    _controller.clear();
+    _selectedCategory = score.category;
+    _selectedSubcategories = {...score.subcategories ?? {}};
+    final categorySubcategories = await ref
+        .read(categoriesNotifierProvider.notifier)
+        .getSubcategoriesByCategory(_selectedCategory!.id);
+    if (!mounted) return;
+    DialogHelper.showSubcategoriesDialog(
+      context: context,
+      selectedCategory: _selectedCategory!,
+      categorySubcategories: categorySubcategories,
+      selectedSubcategories: {..._selectedSubcategories},
+      onAddSubcategory: (newName) async {
+        final newSubcategory = SubcategoriesCompanion(
+          categoryId: Value(_selectedCategory!.id),
+          name: Value(newName),
+        );
+
+        final updatedCategory = await ref
+            .read(categoriesNotifierProvider.notifier)
+            .addSubcategory(newSubcategory);
+
+        return updatedCategory.subcategories?.lastWhere(
+          (sub) => sub.name == newName,
+        );
+      },
+
+      controller: _controller,
+      name: "Subcategories",
+      handleSubmit: (updatedSelection) {
+        _selectedSubcategories = updatedSelection;
+        ref.read(scoresNotifierProvider.notifier).updateScore('subcategories', {
+          ..._selectedSubcategories,
+        }, score.score.id);
+      },
+    );
+  }
+
+  void _catalogNumberSubmit(ScoreWithDetails score) {
+    _controller.text = score.score.catalogNumber;
+    DialogHelper.showTextEditDialog(
+      context: context,
+      name: "Catalog Number",
+      controller: _controller,
+      validator:
+          () => ScoreWithDetails.catalogValidiator(
+            _controller.text,
+            score.category,
+          ),
+      handleSubmit: () {
+        ref
+            .read(scoresNotifierProvider.notifier)
+            .updateScore('catalog_number', _controller.text, score.score.id);
+      },
+    );
+  }
+
+  void _statusSubmit(ScoreData score) {
+    DialogHelper.showStatusDialog(
+      context: context,
+      selectedStatus: _selectedStatus,
+      onStatusSelect: (status) => _selectedStatus = status,
+      name: "Status",
+      handleSubmit: () {
+        if (_selectedStatus == null) return;
+        ref
+            .read(scoresNotifierProvider.notifier)
+            .updateScore('status', _selectedStatus!.title, score.id);
+      },
+    );
+  }
+
+  void _notesSubmit(ScoreData score) {
+    _controller.text = score.notes;
+    DialogHelper.showTextEditDialog(
+      context: context,
+      controller: _controller,
+      name: "Notes",
+      validator: () => null,
+      handleSubmit: () {
+        ref
+            .read(scoresNotifierProvider.notifier)
+            .updateScore('notes', _controller.text, score.id);
+      },
+    );
   }
 
   @override
@@ -108,28 +258,7 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                                 title: "Title",
                                 item: score.score.title,
                                 edit: edit,
-                                handleSubmit: () {
-                                  _controller.text = score.score.title;
-                                  DialogHelper.showTextEditDialog(
-                                    context: context,
-                                    name: "Title",
-                                    controller: _controller,
-                                    validator:
-                                        () =>
-                                            _controller.text.isEmpty
-                                                ? "Title cannot be empty"
-                                                : null,
-                                    handleSubmit: () {
-                                      ref
-                                          .read(scoresNotifierProvider.notifier)
-                                          .updateScore(
-                                            'title',
-                                            _controller.text,
-                                            score.score.id,
-                                          );
-                                    },
-                                  );
-                                },
+                                handleSubmit: () => _titleSubmit(score.score),
                               ),
                               Divider(),
 
@@ -140,37 +269,7 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                                         ? score.composer!.name
                                         : "",
                                 edit: edit,
-                                handleSubmit: () {
-                                  _controller.text =
-                                      (score.composer != null)
-                                          ? score.composer!.name
-                                          : "";
-                                  DialogHelper.showTextEditDialog(
-                                    context: context,
-                                    controller: _controller,
-                                    name: "Composer",
-                                    validator:
-                                        () =>
-                                            _controller.text.isEmpty
-                                                ? "Composer cannot be empty"
-                                                : null,
-                                    handleSubmit: () async {
-                                      ComposerData? composer = await ref
-                                          .read(scoresNotifierProvider.notifier)
-                                          .getComposer(_controller.text);
-                                      composer ??= await ref
-                                          .read(scoresNotifierProvider.notifier)
-                                          .addComposer(_controller.text);
-                                      ref
-                                          .read(scoresNotifierProvider.notifier)
-                                          .updateScore(
-                                            'composer',
-                                            composer.id,
-                                            score.score.id,
-                                          );
-                                    },
-                                  );
-                                },
+                                handleSubmit: () => _composerSubmit(score),
                               ),
                               Divider(),
 
@@ -181,24 +280,8 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                                         ? '(none)'
                                         : score.score.arranger,
                                 edit: edit,
-                                handleSubmit: () {
-                                  _controller.text = score.score.arranger;
-                                  DialogHelper.showTextEditDialog(
-                                    context: context,
-                                    controller: _controller,
-                                    name: "Arranger",
-                                    validator: () => null,
-                                    handleSubmit: () {
-                                      ref
-                                          .read(scoresNotifierProvider.notifier)
-                                          .updateScore(
-                                            'arranger',
-                                            _controller.text,
-                                            score.score.id,
-                                          );
-                                    },
-                                  );
-                                },
+                                handleSubmit:
+                                    () => _arrangerSubmit(score.score),
                               ),
                             ],
                           ),
@@ -213,48 +296,7 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                                         ? score.category!.name
                                         : '',
                                 edit: edit,
-                                handleSubmit: () {
-                                  DialogHelper.showCatalogDialog(
-                                    context: context,
-                                    selectedCategory: _selectedCategory,
-                                    categories: categories,
-                                    onCategorySelect:
-                                        (category) =>
-                                            _selectedCategory = category,
-                                    name: "Category",
-                                    handleSubmit: () async {
-                                      if (score.category != _selectedCategory) {
-                                        _selectedSubcategories.clear();
-                                        ref
-                                            .read(
-                                              scoresNotifierProvider.notifier,
-                                            )
-                                            .updateScore(
-                                              'category',
-                                              _selectedCategory!.id,
-                                              score.score.id,
-                                            );
-                                        final newCatalogNum = await ref
-                                            .read(
-                                              scoresNotifierProvider.notifier,
-                                            )
-                                            .getNewCatalogNumber(
-                                              _selectedCategory!.id,
-                                              _selectedCategory!.identifier,
-                                            );
-                                        ref
-                                            .read(
-                                              scoresNotifierProvider.notifier,
-                                            )
-                                            .updateScore(
-                                              'catalog_number',
-                                              newCatalogNum,
-                                              score.score.id,
-                                            );
-                                      }
-                                    },
-                                  );
-                                },
+                                handleSubmit: () => _categorySubmit(score),
                               ),
                               Divider(),
 
@@ -299,59 +341,7 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                                         )
                                         : '(none)',
 
-                                handleSubmit: () async {
-                                  _controller.clear();
-                                  _selectedCategory = score.category;
-                                  _selectedSubcategories = {
-                                    ...score.subcategories ?? {},
-                                  };
-                                  final categorySubcategories = await ref
-                                      .read(categoriesNotifierProvider.notifier)
-                                      .getSubcategoriesByCategory(
-                                        _selectedCategory!.id,
-                                      );
-                                  if (!context.mounted) return;
-                                  DialogHelper.showSubcategoriesDialog(
-                                    context: context,
-                                    selectedCategory: _selectedCategory!,
-                                    categorySubcategories:
-                                        categorySubcategories,
-                                    selectedSubcategories: {
-                                      ..._selectedSubcategories,
-                                    },
-                                    onAddSubcategory: (newName) async {
-                                      final newSubcategory =
-                                          SubcategoriesCompanion(
-                                            categoryId: Value(
-                                              _selectedCategory!.id,
-                                            ),
-                                            name: Value(newName),
-                                          );
-
-                                      final updatedCategory = await ref
-                                          .read(
-                                            categoriesNotifierProvider.notifier,
-                                          )
-                                          .addSubcategory(newSubcategory);
-
-                                      return updatedCategory.subcategories
-                                          ?.lastWhere(
-                                            (sub) => sub.name == newName,
-                                          );
-                                    },
-
-                                    controller: _controller,
-                                    name: "Subcategories",
-                                    handleSubmit: (updatedSelection) {
-                                      _selectedSubcategories = updatedSelection;
-                                      ref
-                                          .read(scoresNotifierProvider.notifier)
-                                          .updateScore('subcategories', {
-                                            ..._selectedSubcategories,
-                                          }, score.score.id);
-                                    },
-                                  );
-                                },
+                                handleSubmit: () => _subCategorySubmit(score),
                               ),
                             ],
                           ),
@@ -363,29 +353,7 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                                 title: "Catalog Number",
                                 item: score.score.catalogNumber,
                                 edit: edit,
-                                handleSubmit: () {
-                                  _controller.text = score.score.catalogNumber;
-                                  DialogHelper.showTextEditDialog(
-                                    context: context,
-                                    name: "Catalog Number",
-                                    controller: _controller,
-                                    validator:
-                                        () =>
-                                            ScoreWithDetails.catalogValidiator(
-                                              _controller.text,
-                                              score.category,
-                                            ),
-                                    handleSubmit: () {
-                                      ref
-                                          .read(scoresNotifierProvider.notifier)
-                                          .updateScore(
-                                            'catalog_number',
-                                            _controller.text,
-                                            score.score.id,
-                                          );
-                                    },
-                                  );
-                                },
+                                handleSubmit: () => _catalogNumberSubmit(score),
                               ),
                               Divider(),
 
@@ -402,25 +370,7 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                                     Text(score.status!.title),
                                   ],
                                 ),
-                                handleSubmit: () {
-                                  DialogHelper.showStatusDialog(
-                                    context: context,
-                                    selectedStatus: _selectedStatus,
-                                    onStatusSelect:
-                                        (status) => _selectedStatus = status,
-                                    name: "Status",
-                                    handleSubmit: () {
-                                      if (_selectedStatus == null) return;
-                                      ref
-                                          .read(scoresNotifierProvider.notifier)
-                                          .updateScore(
-                                            'status',
-                                            _selectedStatus!.title,
-                                            score.score.id,
-                                          );
-                                    },
-                                  );
-                                },
+                                handleSubmit: () => _statusSubmit(score.score),
                               ),
                             ],
                           ),
@@ -434,24 +384,7 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                                     (score.score.notes.isEmpty)
                                         ? '(none)'
                                         : score.score.notes,
-                                handleSubmit: () {
-                                  _controller.text = score.score.notes;
-                                  DialogHelper.showTextEditDialog(
-                                    context: context,
-                                    controller: _controller,
-                                    name: "Notes",
-                                    validator: () => null,
-                                    handleSubmit: () {
-                                      ref
-                                          .read(scoresNotifierProvider.notifier)
-                                          .updateScore(
-                                            'notes',
-                                            _controller.text,
-                                            score.score.id,
-                                          );
-                                    },
-                                  );
-                                },
+                                handleSubmit: () => _notesSubmit(score.score),
                               ),
                             ],
                           ),

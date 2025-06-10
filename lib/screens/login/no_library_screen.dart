@@ -55,8 +55,6 @@ class NoLibraryScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // const Icon(Icons.library_books, size: 80, color: Colors.blue),
-                  // const SizedBox(height: 16),
                   const Text(
                     "No library found for your account.",
                     textAlign: TextAlign.center,

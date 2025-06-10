@@ -53,7 +53,6 @@ class DialogHelper {
     required BuildContext context,
     required String name,
     required List<CategoryWithDetails> categories,
-    // required Map<String, dynamic> categories,
     required dynamic selectedCategory,
     required void Function(dynamic) onCategorySelect,
     required void Function() handleSubmit,
@@ -72,7 +71,6 @@ class DialogHelper {
                   itemCount: categories.length,
                   itemBuilder: (_, index) {
                     var entry = categories[index];
-                    // var entry = categories.entries.elementAt(index);
                     return CategoryCard(
                       category: entry.category,
                       onTap: (category) {

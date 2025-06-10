@@ -1,4 +1,3 @@
-// lib/screens/link_library/setting_up_page.dart
 import 'package:flutter/material.dart';
 
 class SettingUpPage extends StatelessWidget {

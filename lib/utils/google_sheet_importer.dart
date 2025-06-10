@@ -3,6 +3,8 @@ import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:library_app/database/library_database.dart';
+import 'package:library_app/providers/categories_provider.dart';
+import 'package:library_app/providers/database_provider.dart';
 import 'package:library_app/utils/header_helper.dart';
 import 'package:library_app/utils/highlight_error_cells.dart';
 import 'package:library_app/utils/schema_validator.dart';

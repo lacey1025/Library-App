@@ -6,6 +6,7 @@ import 'package:library_app/models/category_with_details.dart';
 import 'package:library_app/models/status.dart';
 import 'package:library_app/providers/categories_provider.dart';
 import 'package:library_app/providers/scores_provider.dart';
+import 'package:library_app/screens/create/add_subcategory_button.dart';
 import 'package:library_app/screens/home/home.dart';
 import 'package:library_app/shared/app_drawer.dart';
 import 'package:library_app/shared/gradient_button.dart';
@@ -38,14 +39,21 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  void updateStatus(Status status) {
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _updateStatus(Status status) {
     setState(() {
       FocusScope.of(context).unfocus();
       _selectedStatus = status;
     });
   }
 
-  void addNewSubcategory() async {
+  void _addNewSubcategory() async {
     final newName = _controller.text.trim();
     if (newName.isEmpty || _selectedCategory == null) return;
 
@@ -75,21 +83,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
     });
   }
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   _selectedCategory =
-  //       ref.read(categoriesNotifierProvider).entries.first.value;
-  // }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  Future<String?> catalogValidiator(String? value) async {
+  Future<String?> _catalogValidiator(String? value) async {
     if (value == null || value.isEmpty) {
       if (_selectedCategory != null) {
         _catalogNumber = await ref
@@ -122,8 +116,8 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
     return null;
   }
 
-  void handleSubmit() async {
-    final catalogError = await catalogValidiator(_catalogNumber);
+  void _handleSubmit() async {
+    final catalogError = await _catalogValidiator(_catalogNumber);
     if (!mounted) return;
     if (catalogError != null) {
       setState(() {
@@ -267,6 +261,130 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
           );
         },
       );
+    }
+  }
+
+  Future<Map<String, String>?> _showCategoryDialog(
+    GlobalKey<FormState> dialogFormKey,
+    String name,
+    String identifier,
+  ) async {
+    return showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Add New Category"),
+          content: Form(
+            key: dialogFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  cursorColor: Colors.white,
+                  autofocus: true,
+                  style: TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white),
+                    ),
+                    labelText: "Category Name",
+                  ),
+                  onChanged: (value) => name = value,
+                  validator:
+                      (value) =>
+                          value == null || value.trim().isEmpty
+                              ? 'Required'
+                              : null,
+                ),
+                SizedBox(height: 8),
+                TextFormField(
+                  cursorColor: Colors.white,
+                  style: TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white),
+                    ),
+                    labelText: "Letter Identifier (e.g. M)",
+                  ),
+                  maxLength: 10,
+                  onChanged: (value) => identifier = value,
+                  validator:
+                      (value) =>
+                          value == null || value.trim().isEmpty
+                              ? 'Required'
+                              : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                if (dialogFormKey.currentState!.validate()) {
+                  Navigator.of(context).pop({
+                    'name': name.trim(),
+                    'identifier': identifier.trim().toUpperCase(),
+                  });
+                }
+              },
+              child: Text("Add"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _onCategoryDropdownChange(
+    int? newId,
+    AsyncValue<List<CategoryWithDetails>> categories,
+  ) async {
+    if (newId == null) return;
+    if (newId == -1) {
+      final dialogFormKey = GlobalKey<FormState>();
+      String name = '';
+      String identifier = '';
+      final result = await _showCategoryDialog(dialogFormKey, name, identifier);
+      if (result != null &&
+          result['name']!.isNotEmpty &&
+          result['identifier']!.isNotEmpty) {
+        final newCategory = await ref
+            .read(categoriesNotifierProvider.notifier)
+            .addCategory(
+              CategoriesCompanion(
+                name: Value(result['name']!),
+                identifier: Value(result['identifier']!),
+              ),
+            );
+        setState(() {
+          _selectedCategory = newCategory;
+          _selectedSubcategories.clear();
+          _subcategories
+            ..clear()
+            ..addAll(newCategory.subcategories ?? {});
+        });
+      }
+    } else {
+      final categoryList = categories.asData?.value;
+      if (categoryList == null) return;
+      final selected = categoryList.firstWhere((c) => c.category.id == newId);
+      setState(() {
+        _selectedCategory = selected;
+        _selectedSubcategories.clear();
+        _subcategories
+          ..clear()
+          ..addAll(selected.subcategories ?? {});
+      });
     }
   }
 
@@ -428,149 +546,9 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                             loading: () => [],
                             error: (err, stack) => [],
                           ),
-                          onChanged: (newId) async {
-                            if (newId == null) return;
-                            if (newId == -1) {
-                              final dialogFormKey = GlobalKey<FormState>();
-                              String name = '';
-                              String identifier = '';
-                              final result = await showDialog<
-                                Map<String, String>
-                              >(
-                                context: context,
-                                builder: (context) {
-                                  return AlertDialog(
-                                    title: Text("Add New Category"),
-                                    content: Form(
-                                      key: dialogFormKey,
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          TextFormField(
-                                            cursorColor: Colors.white,
-                                            autofocus: true,
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                            ),
-                                            decoration: InputDecoration(
-                                              enabledBorder:
-                                                  UnderlineInputBorder(
-                                                    borderSide: BorderSide(
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                              focusedBorder:
-                                                  UnderlineInputBorder(
-                                                    borderSide: BorderSide(
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                              labelText: "Category Name",
-                                            ),
-                                            onChanged: (value) => name = value,
-                                            validator:
-                                                (value) =>
-                                                    value == null ||
-                                                            value.trim().isEmpty
-                                                        ? 'Required'
-                                                        : null,
-                                          ),
-                                          SizedBox(height: 8),
-                                          TextFormField(
-                                            cursorColor: Colors.white,
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                            ),
-                                            decoration: InputDecoration(
-                                              enabledBorder:
-                                                  UnderlineInputBorder(
-                                                    borderSide: BorderSide(
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                              focusedBorder:
-                                                  UnderlineInputBorder(
-                                                    borderSide: BorderSide(
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                              labelText:
-                                                  "Letter Identifier (e.g. M)",
-                                            ),
-                                            maxLength: 10,
-                                            onChanged:
-                                                (value) => identifier = value,
-                                            validator:
-                                                (value) =>
-                                                    value == null ||
-                                                            value.trim().isEmpty
-                                                        ? 'Required'
-                                                        : null,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed:
-                                            () => Navigator.of(context).pop(),
-                                        child: Text("Cancel"),
-                                      ),
-                                      TextButton(
-                                        onPressed: () {
-                                          if (dialogFormKey.currentState!
-                                              .validate()) {
-                                            Navigator.of(context).pop({
-                                              'name': name.trim(),
-                                              'identifier':
-                                                  identifier
-                                                      .trim()
-                                                      .toUpperCase(),
-                                            });
-                                          }
-                                        },
-                                        child: Text("Add"),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                              if (result != null &&
-                                  result['name']!.isNotEmpty &&
-                                  result['identifier']!.isNotEmpty) {
-                                final newCategory = await ref
-                                    .read(categoriesNotifierProvider.notifier)
-                                    .addCategory(
-                                      CategoriesCompanion(
-                                        name: Value(result['name']!),
-                                        identifier: Value(
-                                          result['identifier']!,
-                                        ),
-                                      ),
-                                    );
-                                setState(() {
-                                  _selectedCategory = newCategory;
-                                  _selectedSubcategories.clear();
-                                  _subcategories
-                                    ..clear()
-                                    ..addAll(newCategory.subcategories ?? {});
-                                });
-                              }
-                            } else {
-                              final categoryList = categories.asData?.value;
-                              if (categoryList == null) return;
-                              final selected = categoryList.firstWhere(
-                                (c) => c.category.id == newId,
-                              );
-                              setState(() {
-                                _selectedCategory = selected;
-                                _selectedSubcategories.clear();
-                                _subcategories
-                                  ..clear()
-                                  ..addAll(selected.subcategories ?? {});
-                              });
-                            }
-                          },
+                          onChanged:
+                              (newId) =>
+                                  _onCategoryDropdownChange(newId, categories),
                           validator: (value) {
                             if (_selectedCategory == null) {
                               return 'Please select a category';
@@ -624,78 +602,10 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                                 );
                               }),
                               if (_selectedCategory != null)
-                                InkWell(
-                                  splashColor: Colors.transparent,
-                                  onTap: () {
-                                    FocusScope.of(context).unfocus();
-                                    setState(() {
-                                      _isEditing = true;
-                                    });
+                                AddSubcategoryButton(
+                                  onSubmitted: (value) {
+                                    _addNewSubcategory();
                                   },
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Container(
-                                    margin: EdgeInsets.only(top: 5),
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 7,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color.fromARGB(
-                                        255,
-                                        152,
-                                        56,
-                                        56,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child:
-                                        _isEditing
-                                            ? SizedBox(
-                                              width: 250,
-                                              child: TextField(
-                                                cursorColor: Colors.white,
-                                                style:
-                                                    Theme.of(
-                                                      context,
-                                                    ).textTheme.bodyMedium,
-                                                controller: _controller,
-                                                autofocus: true,
-                                                onSubmitted: (value) {
-                                                  addNewSubcategory();
-                                                },
-                                                decoration: InputDecoration(
-                                                  contentPadding:
-                                                      EdgeInsets.symmetric(
-                                                        vertical: 12,
-                                                      ),
-                                                  hintText:
-                                                      "add new subcategory",
-                                                  hintStyle: TextStyle(
-                                                    color: const Color.fromARGB(
-                                                      255,
-                                                      218,
-                                                      181,
-                                                      181,
-                                                    ),
-                                                  ),
-                                                  fillColor: Colors.transparent,
-                                                  border: InputBorder.none,
-                                                  suffixIcon: IconButton(
-                                                    icon: Icon(
-                                                      Icons.check,
-                                                      color: Colors.white,
-                                                    ),
-                                                    onPressed:
-                                                        addNewSubcategory,
-                                                  ),
-                                                ),
-                                              ),
-                                            )
-                                            : Icon(
-                                              Icons.add,
-                                              color: Colors.white,
-                                            ),
-                                  ),
                                 ),
                             ],
                           ),
@@ -716,7 +626,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                             Expanded(
                               child: StatusCard(
                                 status: Status.inLibrary,
-                                onTap: updateStatus,
+                                onTap: _updateStatus,
                                 selected: _selectedStatus == Status.inLibrary,
                               ),
                             ),
@@ -724,7 +634,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                             Expanded(
                               child: StatusCard(
                                 status: Status.checkedOut,
-                                onTap: updateStatus,
+                                onTap: _updateStatus,
                                 selected: _selectedStatus == Status.checkedOut,
                               ),
                             ),
@@ -735,7 +645,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                             Expanded(
                               child: StatusCard(
                                 status: Status.digitalOnly,
-                                onTap: updateStatus,
+                                onTap: _updateStatus,
                                 selected: _selectedStatus == Status.digitalOnly,
                               ),
                             ),
@@ -743,7 +653,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                             Expanded(
                               child: StatusCard(
                                 status: Status.inBinder,
-                                onTap: updateStatus,
+                                onTap: _updateStatus,
                                 selected: _selectedStatus == Status.inBinder,
                               ),
                             ),
@@ -754,7 +664,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                             Expanded(
                               child: StatusCard(
                                 status: Status.incomplete,
-                                onTap: updateStatus,
+                                onTap: _updateStatus,
                                 selected: _selectedStatus == Status.incomplete,
                               ),
                             ),
@@ -762,7 +672,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                             Expanded(
                               child: StatusCard(
                                 status: Status.missing,
-                                onTap: updateStatus,
+                                onTap: _updateStatus,
                                 selected: _selectedStatus == Status.missing,
                               ),
                             ),
@@ -816,7 +726,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(4, 10, 8, 5),
                       child: GradientButton(
-                        onPressed: handleSubmit,
+                        onPressed: _handleSubmit,
                         text: Text(
                           "Submit",
                           style: Theme.of(context).textTheme.bodyMedium,
