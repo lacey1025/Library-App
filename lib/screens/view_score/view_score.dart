@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:library_app/database/library_database.dart';
+import 'package:library_app/models/category_with_details.dart';
 import 'package:library_app/models/score_with_details.dart';
 import 'package:library_app/models/status.dart';
 import 'package:library_app/providers/categories_provider.dart';
@@ -91,22 +92,34 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
     );
   }
 
-  void _categorySubmit(ScoreWithDetails score) async {
-    if (score.category != _selectedCategory) {
-      _selectedSubcategories.clear();
-      ref
-          .read(scoresNotifierProvider.notifier)
-          .updateScore('category', _selectedCategory!.id, score.score.id);
-      final newCatalogNum = await ref
-          .read(scoresNotifierProvider.notifier)
-          .getNewCatalogNumber(
-            _selectedCategory!.id,
-            _selectedCategory!.identifier,
-          );
-      ref
-          .read(scoresNotifierProvider.notifier)
-          .updateScore('catalog_number', newCatalogNum, score.score.id);
-    }
+  void _categorySubmit(
+    ScoreWithDetails score,
+    List<CategoryWithDetails> categories,
+  ) {
+    DialogHelper.showCatalogDialog(
+      context: context,
+      selectedCategory: _selectedCategory,
+      categories: categories,
+      onCategorySelect: (category) => _selectedCategory = category,
+      name: "Category",
+      handleSubmit: () async {
+        if (score.category != _selectedCategory) {
+          _selectedSubcategories.clear();
+          ref
+              .read(scoresNotifierProvider.notifier)
+              .updateScore('category', _selectedCategory!.id, score.score.id);
+          final newCatalogNum = await ref
+              .read(scoresNotifierProvider.notifier)
+              .getNewCatalogNumber(
+                _selectedCategory!.id,
+                _selectedCategory!.identifier,
+              );
+          ref
+              .read(scoresNotifierProvider.notifier)
+              .updateScore('catalog_number', newCatalogNum, score.score.id);
+        }
+      },
+    );
   }
 
   void _subCategorySubmit(ScoreWithDetails score) async {
@@ -296,7 +309,8 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                                         ? score.category!.name
                                         : '',
                                 edit: edit,
-                                handleSubmit: () => _categorySubmit(score),
+                                handleSubmit:
+                                    () => _categorySubmit(score, categories),
                               ),
                               Divider(),
 

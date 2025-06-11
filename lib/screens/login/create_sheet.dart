@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
@@ -173,13 +174,15 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
       if (!mounted) return;
       final startInfo = await ref.read(appInitializerProvider.future);
       final userId = startInfo.googleAccount!.id;
-      final session = UserSessionData(
-        libraryName: _libraryName!,
-        userId: userId,
-        sheetId: _sheetId!,
-        driveFolderId: _folderId,
-        isAdmin: true,
-        isActive: true,
+      final session = SessionsCompanion(
+        libraryName: Value(_libraryName!),
+        userId: Value(userId),
+        sheetId: Value(_sheetId!),
+        driveFolderId: Value(_folderId),
+        isAdmin: Value(true),
+        isActive: Value(true),
+        isUserPrimary: Value(true),
+        hasSheetErrors: Value(false),
       );
       await ref.read(sessionProvider.notifier).setSession(session);
       if (!mounted) return;

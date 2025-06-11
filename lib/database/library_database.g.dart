@@ -9,6 +9,19 @@ class $SessionsTable extends Sessions
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $SessionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
   static const VerificationMeta _libraryNameMeta = const VerificationMeta(
     'libraryName',
   );
@@ -81,14 +94,47 @@ class $SessionsTable extends Sessions
     ),
     defaultValue: Constant(false),
   );
+  static const VerificationMeta _isUserPrimaryMeta = const VerificationMeta(
+    'isUserPrimary',
+  );
+  @override
+  late final GeneratedColumn<bool> isUserPrimary = GeneratedColumn<bool>(
+    'is_user_primary',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_user_primary" IN (0, 1))',
+    ),
+    defaultValue: Constant(false),
+  );
+  static const VerificationMeta _hasSheetErrorsMeta = const VerificationMeta(
+    'hasSheetErrors',
+  );
+  @override
+  late final GeneratedColumn<bool> hasSheetErrors = GeneratedColumn<bool>(
+    'has_sheet_errors',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("has_sheet_errors" IN (0, 1))',
+    ),
+    defaultValue: Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
+    id,
     libraryName,
     userId,
     sheetId,
     driveFolderId,
     isAdmin,
     isActive,
+    isUserPrimary,
+    hasSheetErrors,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -102,6 +148,9 @@ class $SessionsTable extends Sessions
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
     if (data.containsKey('library_name')) {
       context.handle(
         _libraryNameMeta,
@@ -150,15 +199,38 @@ class $SessionsTable extends Sessions
         isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
       );
     }
+    if (data.containsKey('is_user_primary')) {
+      context.handle(
+        _isUserPrimaryMeta,
+        isUserPrimary.isAcceptableOrUnknown(
+          data['is_user_primary']!,
+          _isUserPrimaryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('has_sheet_errors')) {
+      context.handle(
+        _hasSheetErrorsMeta,
+        hasSheetErrors.isAcceptableOrUnknown(
+          data['has_sheet_errors']!,
+          _hasSheetErrorsMeta,
+        ),
+      );
+    }
     return context;
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {userId};
+  Set<GeneratedColumn> get $primaryKey => {id};
   @override
   UserSessionData map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return UserSessionData(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}id'],
+          )!,
       libraryName:
           attachedDatabase.typeMapping.read(
             DriftSqlType.string,
@@ -188,6 +260,16 @@ class $SessionsTable extends Sessions
             DriftSqlType.bool,
             data['${effectivePrefix}is_active'],
           )!,
+      isUserPrimary:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}is_user_primary'],
+          )!,
+      hasSheetErrors:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}has_sheet_errors'],
+          )!,
     );
   }
 
@@ -198,23 +280,30 @@ class $SessionsTable extends Sessions
 }
 
 class UserSessionData extends DataClass implements Insertable<UserSessionData> {
+  final int id;
   final String libraryName;
   final String userId;
   final String sheetId;
   final String? driveFolderId;
   final bool isAdmin;
   final bool isActive;
+  final bool isUserPrimary;
+  final bool hasSheetErrors;
   const UserSessionData({
+    required this.id,
     required this.libraryName,
     required this.userId,
     required this.sheetId,
     this.driveFolderId,
     required this.isAdmin,
     required this.isActive,
+    required this.isUserPrimary,
+    required this.hasSheetErrors,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
     map['library_name'] = Variable<String>(libraryName);
     map['user_id'] = Variable<String>(userId);
     map['sheet_id'] = Variable<String>(sheetId);
@@ -223,11 +312,14 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
     }
     map['is_admin'] = Variable<bool>(isAdmin);
     map['is_active'] = Variable<bool>(isActive);
+    map['is_user_primary'] = Variable<bool>(isUserPrimary);
+    map['has_sheet_errors'] = Variable<bool>(hasSheetErrors);
     return map;
   }
 
   SessionsCompanion toCompanion(bool nullToAbsent) {
     return SessionsCompanion(
+      id: Value(id),
       libraryName: Value(libraryName),
       userId: Value(userId),
       sheetId: Value(sheetId),
@@ -237,6 +329,8 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
               : Value(driveFolderId),
       isAdmin: Value(isAdmin),
       isActive: Value(isActive),
+      isUserPrimary: Value(isUserPrimary),
+      hasSheetErrors: Value(hasSheetErrors),
     );
   }
 
@@ -246,35 +340,45 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return UserSessionData(
+      id: serializer.fromJson<int>(json['id']),
       libraryName: serializer.fromJson<String>(json['libraryName']),
       userId: serializer.fromJson<String>(json['userId']),
       sheetId: serializer.fromJson<String>(json['sheetId']),
       driveFolderId: serializer.fromJson<String?>(json['driveFolderId']),
       isAdmin: serializer.fromJson<bool>(json['isAdmin']),
       isActive: serializer.fromJson<bool>(json['isActive']),
+      isUserPrimary: serializer.fromJson<bool>(json['isUserPrimary']),
+      hasSheetErrors: serializer.fromJson<bool>(json['hasSheetErrors']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
       'libraryName': serializer.toJson<String>(libraryName),
       'userId': serializer.toJson<String>(userId),
       'sheetId': serializer.toJson<String>(sheetId),
       'driveFolderId': serializer.toJson<String?>(driveFolderId),
       'isAdmin': serializer.toJson<bool>(isAdmin),
       'isActive': serializer.toJson<bool>(isActive),
+      'isUserPrimary': serializer.toJson<bool>(isUserPrimary),
+      'hasSheetErrors': serializer.toJson<bool>(hasSheetErrors),
     };
   }
 
   UserSessionData copyWith({
+    int? id,
     String? libraryName,
     String? userId,
     String? sheetId,
     Value<String?> driveFolderId = const Value.absent(),
     bool? isAdmin,
     bool? isActive,
+    bool? isUserPrimary,
+    bool? hasSheetErrors,
   }) => UserSessionData(
+    id: id ?? this.id,
     libraryName: libraryName ?? this.libraryName,
     userId: userId ?? this.userId,
     sheetId: sheetId ?? this.sheetId,
@@ -282,9 +386,12 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
         driveFolderId.present ? driveFolderId.value : this.driveFolderId,
     isAdmin: isAdmin ?? this.isAdmin,
     isActive: isActive ?? this.isActive,
+    isUserPrimary: isUserPrimary ?? this.isUserPrimary,
+    hasSheetErrors: hasSheetErrors ?? this.hasSheetErrors,
   );
   UserSessionData copyWithCompanion(SessionsCompanion data) {
     return UserSessionData(
+      id: data.id.present ? data.id.value : this.id,
       libraryName:
           data.libraryName.present ? data.libraryName.value : this.libraryName,
       userId: data.userId.present ? data.userId.value : this.userId,
@@ -295,114 +402,148 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
               : this.driveFolderId,
       isAdmin: data.isAdmin.present ? data.isAdmin.value : this.isAdmin,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      isUserPrimary:
+          data.isUserPrimary.present
+              ? data.isUserPrimary.value
+              : this.isUserPrimary,
+      hasSheetErrors:
+          data.hasSheetErrors.present
+              ? data.hasSheetErrors.value
+              : this.hasSheetErrors,
     );
   }
 
   @override
   String toString() {
     return (StringBuffer('UserSessionData(')
+          ..write('id: $id, ')
           ..write('libraryName: $libraryName, ')
           ..write('userId: $userId, ')
           ..write('sheetId: $sheetId, ')
           ..write('driveFolderId: $driveFolderId, ')
           ..write('isAdmin: $isAdmin, ')
-          ..write('isActive: $isActive')
+          ..write('isActive: $isActive, ')
+          ..write('isUserPrimary: $isUserPrimary, ')
+          ..write('hasSheetErrors: $hasSheetErrors')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(
+    id,
     libraryName,
     userId,
     sheetId,
     driveFolderId,
     isAdmin,
     isActive,
+    isUserPrimary,
+    hasSheetErrors,
   );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is UserSessionData &&
+          other.id == this.id &&
           other.libraryName == this.libraryName &&
           other.userId == this.userId &&
           other.sheetId == this.sheetId &&
           other.driveFolderId == this.driveFolderId &&
           other.isAdmin == this.isAdmin &&
-          other.isActive == this.isActive);
+          other.isActive == this.isActive &&
+          other.isUserPrimary == this.isUserPrimary &&
+          other.hasSheetErrors == this.hasSheetErrors);
 }
 
 class SessionsCompanion extends UpdateCompanion<UserSessionData> {
+  final Value<int> id;
   final Value<String> libraryName;
   final Value<String> userId;
   final Value<String> sheetId;
   final Value<String?> driveFolderId;
   final Value<bool> isAdmin;
   final Value<bool> isActive;
-  final Value<int> rowid;
+  final Value<bool> isUserPrimary;
+  final Value<bool> hasSheetErrors;
   const SessionsCompanion({
+    this.id = const Value.absent(),
     this.libraryName = const Value.absent(),
     this.userId = const Value.absent(),
     this.sheetId = const Value.absent(),
     this.driveFolderId = const Value.absent(),
     this.isAdmin = const Value.absent(),
     this.isActive = const Value.absent(),
-    this.rowid = const Value.absent(),
+    this.isUserPrimary = const Value.absent(),
+    this.hasSheetErrors = const Value.absent(),
   });
   SessionsCompanion.insert({
+    this.id = const Value.absent(),
     required String libraryName,
     required String userId,
     required String sheetId,
     this.driveFolderId = const Value.absent(),
     this.isAdmin = const Value.absent(),
     this.isActive = const Value.absent(),
-    this.rowid = const Value.absent(),
+    this.isUserPrimary = const Value.absent(),
+    this.hasSheetErrors = const Value.absent(),
   }) : libraryName = Value(libraryName),
        userId = Value(userId),
        sheetId = Value(sheetId);
   static Insertable<UserSessionData> custom({
+    Expression<int>? id,
     Expression<String>? libraryName,
     Expression<String>? userId,
     Expression<String>? sheetId,
     Expression<String>? driveFolderId,
     Expression<bool>? isAdmin,
     Expression<bool>? isActive,
-    Expression<int>? rowid,
+    Expression<bool>? isUserPrimary,
+    Expression<bool>? hasSheetErrors,
   }) {
     return RawValuesInsertable({
+      if (id != null) 'id': id,
       if (libraryName != null) 'library_name': libraryName,
       if (userId != null) 'user_id': userId,
       if (sheetId != null) 'sheet_id': sheetId,
       if (driveFolderId != null) 'drive_folder_id': driveFolderId,
       if (isAdmin != null) 'is_admin': isAdmin,
       if (isActive != null) 'is_active': isActive,
-      if (rowid != null) 'rowid': rowid,
+      if (isUserPrimary != null) 'is_user_primary': isUserPrimary,
+      if (hasSheetErrors != null) 'has_sheet_errors': hasSheetErrors,
     });
   }
 
   SessionsCompanion copyWith({
+    Value<int>? id,
     Value<String>? libraryName,
     Value<String>? userId,
     Value<String>? sheetId,
     Value<String?>? driveFolderId,
     Value<bool>? isAdmin,
     Value<bool>? isActive,
-    Value<int>? rowid,
+    Value<bool>? isUserPrimary,
+    Value<bool>? hasSheetErrors,
   }) {
     return SessionsCompanion(
+      id: id ?? this.id,
       libraryName: libraryName ?? this.libraryName,
       userId: userId ?? this.userId,
       sheetId: sheetId ?? this.sheetId,
       driveFolderId: driveFolderId ?? this.driveFolderId,
       isAdmin: isAdmin ?? this.isAdmin,
       isActive: isActive ?? this.isActive,
-      rowid: rowid ?? this.rowid,
+      isUserPrimary: isUserPrimary ?? this.isUserPrimary,
+      hasSheetErrors: hasSheetErrors ?? this.hasSheetErrors,
     );
   }
 
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
     if (libraryName.present) {
       map['library_name'] = Variable<String>(libraryName.value);
     }
@@ -421,8 +562,11 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
+    if (isUserPrimary.present) {
+      map['is_user_primary'] = Variable<bool>(isUserPrimary.value);
+    }
+    if (hasSheetErrors.present) {
+      map['has_sheet_errors'] = Variable<bool>(hasSheetErrors.value);
     }
     return map;
   }
@@ -430,13 +574,15 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
   @override
   String toString() {
     return (StringBuffer('SessionsCompanion(')
+          ..write('id: $id, ')
           ..write('libraryName: $libraryName, ')
           ..write('userId: $userId, ')
           ..write('sheetId: $sheetId, ')
           ..write('driveFolderId: $driveFolderId, ')
           ..write('isAdmin: $isAdmin, ')
           ..write('isActive: $isActive, ')
-          ..write('rowid: $rowid')
+          ..write('isUserPrimary: $isUserPrimary, ')
+          ..write('hasSheetErrors: $hasSheetErrors')
           ..write(')'))
         .toString();
   }
@@ -2018,23 +2164,27 @@ abstract class _$LibraryDatabase extends GeneratedDatabase {
 
 typedef $$SessionsTableCreateCompanionBuilder =
     SessionsCompanion Function({
+      Value<int> id,
       required String libraryName,
       required String userId,
       required String sheetId,
       Value<String?> driveFolderId,
       Value<bool> isAdmin,
       Value<bool> isActive,
-      Value<int> rowid,
+      Value<bool> isUserPrimary,
+      Value<bool> hasSheetErrors,
     });
 typedef $$SessionsTableUpdateCompanionBuilder =
     SessionsCompanion Function({
+      Value<int> id,
       Value<String> libraryName,
       Value<String> userId,
       Value<String> sheetId,
       Value<String?> driveFolderId,
       Value<bool> isAdmin,
       Value<bool> isActive,
-      Value<int> rowid,
+      Value<bool> isUserPrimary,
+      Value<bool> hasSheetErrors,
     });
 
 class $$SessionsTableFilterComposer
@@ -2046,6 +2196,11 @@ class $$SessionsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get libraryName => $composableBuilder(
     column: $table.libraryName,
     builder: (column) => ColumnFilters(column),
@@ -2075,6 +2230,16 @@ class $$SessionsTableFilterComposer
     column: $table.isActive,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<bool> get isUserPrimary => $composableBuilder(
+    column: $table.isUserPrimary,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get hasSheetErrors => $composableBuilder(
+    column: $table.hasSheetErrors,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$SessionsTableOrderingComposer
@@ -2086,6 +2251,11 @@ class $$SessionsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get libraryName => $composableBuilder(
     column: $table.libraryName,
     builder: (column) => ColumnOrderings(column),
@@ -2115,6 +2285,16 @@ class $$SessionsTableOrderingComposer
     column: $table.isActive,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isUserPrimary => $composableBuilder(
+    column: $table.isUserPrimary,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get hasSheetErrors => $composableBuilder(
+    column: $table.hasSheetErrors,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SessionsTableAnnotationComposer
@@ -2126,6 +2306,9 @@ class $$SessionsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
   GeneratedColumn<String> get libraryName => $composableBuilder(
     column: $table.libraryName,
     builder: (column) => column,
@@ -2147,6 +2330,16 @@ class $$SessionsTableAnnotationComposer
 
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<bool> get isUserPrimary => $composableBuilder(
+    column: $table.isUserPrimary,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get hasSheetErrors => $composableBuilder(
+    column: $table.hasSheetErrors,
+    builder: (column) => column,
+  );
 }
 
 class $$SessionsTableTableManager
@@ -2180,39 +2373,47 @@ class $$SessionsTableTableManager
               () => $$SessionsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
+                Value<int> id = const Value.absent(),
                 Value<String> libraryName = const Value.absent(),
                 Value<String> userId = const Value.absent(),
                 Value<String> sheetId = const Value.absent(),
                 Value<String?> driveFolderId = const Value.absent(),
                 Value<bool> isAdmin = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
+                Value<bool> isUserPrimary = const Value.absent(),
+                Value<bool> hasSheetErrors = const Value.absent(),
               }) => SessionsCompanion(
+                id: id,
                 libraryName: libraryName,
                 userId: userId,
                 sheetId: sheetId,
                 driveFolderId: driveFolderId,
                 isAdmin: isAdmin,
                 isActive: isActive,
-                rowid: rowid,
+                isUserPrimary: isUserPrimary,
+                hasSheetErrors: hasSheetErrors,
               ),
           createCompanionCallback:
               ({
+                Value<int> id = const Value.absent(),
                 required String libraryName,
                 required String userId,
                 required String sheetId,
                 Value<String?> driveFolderId = const Value.absent(),
                 Value<bool> isAdmin = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
+                Value<bool> isUserPrimary = const Value.absent(),
+                Value<bool> hasSheetErrors = const Value.absent(),
               }) => SessionsCompanion.insert(
+                id: id,
                 libraryName: libraryName,
                 userId: userId,
                 sheetId: sheetId,
                 driveFolderId: driveFolderId,
                 isAdmin: isAdmin,
                 isActive: isActive,
-                rowid: rowid,
+                isUserPrimary: isUserPrimary,
+                hasSheetErrors: hasSheetErrors,
               ),
           withReferenceMapper:
               (p0) =>

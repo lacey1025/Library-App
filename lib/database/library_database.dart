@@ -10,15 +10,18 @@ part 'library_database.g.dart';
 
 @DataClassName('UserSessionData')
 class Sessions extends Table {
+  IntColumn get id => integer().autoIncrement()();
   TextColumn get libraryName => text()();
   TextColumn get userId => text()();
   TextColumn get sheetId => text()();
   TextColumn get driveFolderId => text().nullable()();
   BoolColumn get isAdmin => boolean().withDefault(Constant(false))();
   BoolColumn get isActive => boolean().withDefault(Constant(false))();
+  BoolColumn get isUserPrimary => boolean().withDefault(Constant(false))();
+  BoolColumn get hasSheetErrors => boolean().withDefault(Constant(false))();
 
-  @override
-  Set<Column> get primaryKey => {userId};
+  // @override
+  // Set<Column> get primaryKey => {userId};
 }
 
 @DataClassName('ScoreData')

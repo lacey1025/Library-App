@@ -18,19 +18,25 @@ class SessionNotifier extends AsyncNotifier<UserSessionData?> {
     return _sessionDao.getCurrentSession();
   }
 
-  Future<void> setSession(UserSessionData session) async {
-    await _sessionDao.saveAndActivateSession(
-      libraryName: session.libraryName,
-      userId: session.userId,
-      sheetId: session.sheetId,
-      driveFolderId: session.driveFolderId,
-      isAdmin: session.isAdmin,
-    );
-    state = AsyncData(session);
+  Future<void> setSession(SessionsCompanion session) async {
+    await _sessionDao.saveAndActivateSession(session);
+    final currentSession = await _sessionDao.getCurrentSession();
+    state = AsyncData(currentSession);
   }
 
-  Future<bool> switchSession(String userId) async {
-    final success = await _sessionDao.activateSession(userId);
+  Future<void> activateUserPrimary(String userId) async {
+    await _sessionDao.activateUserPrimary(userId);
+    final userCurrentSession = await _sessionDao.getUserCurrentSession(userId);
+    final currentSession = await _sessionDao.getCurrentSession();
+    if (userCurrentSession == currentSession) {
+      state = AsyncData(currentSession);
+    } else {
+      state = AsyncData(null);
+    }
+  }
+
+  Future<bool> switchSession(String libraryName, String userId) async {
+    final success = await _sessionDao.activateSession(libraryName, userId);
     if (success == false) {
       return false;
     }
@@ -39,8 +45,18 @@ class SessionNotifier extends AsyncNotifier<UserSessionData?> {
     return true;
   }
 
+  Future<UserSessionData?> getUserCurrentSession(String userId) async {
+    return await _sessionDao.getUserCurrentSession(userId);
+  }
+
   Future<void> logout() async {
-    await _sessionDao.clearAllSessions();
+    await _sessionDao.deactivateAllSessions();
     state = AsyncData(null);
+  }
+
+  Future<void> updateHasErrors(int sessionId, bool hasErrors) async {
+    await _sessionDao.updateHasErrors(sessionId, hasErrors);
+    final currentSession = await _sessionDao.getCurrentSession();
+    state = AsyncData(currentSession);
   }
 }

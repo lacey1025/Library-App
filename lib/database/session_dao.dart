@@ -13,59 +13,84 @@ class SessionDao extends DatabaseAccessor<LibraryDatabase>
       ..where((s) => s.isActive.equals(true))).getSingleOrNull();
   }
 
-  Future<void> saveAndActivateSession({
-    required String libraryName,
-    required String userId,
-    required String sheetId,
-    String? driveFolderId,
-    bool isAdmin = false,
-  }) async {
+  Future<UserSessionData?> getUserCurrentSession(String userId) {
+    return (select(sessions)
+      ..where((s) => s.isUserPrimary.equals(true))).getSingleOrNull();
+  }
+
+  Future<void> saveAndActivateSession(SessionsCompanion session) async {
     await transaction(() async {
       await (update(
         sessions,
       )).write(const SessionsCompanion(isActive: Value(false)));
-      final entry = SessionsCompanion(
-        libraryName: Value(libraryName),
-        userId: Value(userId),
-        sheetId: Value(sheetId),
-        driveFolderId: Value(driveFolderId),
-        isAdmin: Value(isAdmin),
-        isActive: Value(true),
-      );
-      await into(sessions).insertOnConflictUpdate(entry);
+      await (update(sessions)..where(
+        (tbl) => tbl.userId.equals(session.userId.value),
+      )).write(const SessionsCompanion(isUserPrimary: Value(false)));
+      await into(sessions).insertOnConflictUpdate(session);
     });
   }
 
-  Future<List<UserSessionData>> getAllSessions() {
-    return select(sessions).get();
+  Future<void> updateHasErrors(int sessionId, bool hasErrors) {
+    return (update(sessions)..where(
+      (tbl) => tbl.id.equals(sessionId),
+    )).write(SessionsCompanion(hasSheetErrors: Value(hasErrors)));
   }
 
-  Future<bool> activateSession(String userId) async {
+  Future<List<UserSessionData>> getAllSessionsByUser(String userId) {
+    return (select(sessions)..where((tbl) => tbl.userId.equals(userId))).get();
+  }
+
+  Future<bool> activateSession(String libraryName, String userId) async {
     return transaction(() async {
       final existingSession =
-          await (select(sessions)
-            ..where((s) => s.userId.equals(userId))).getSingleOrNull();
+          await (select(sessions)..where(
+            (s) => s.libraryName.equals(libraryName) & s.userId.equals(userId),
+          )).getSingleOrNull();
       if (existingSession == null) {
         return false;
       }
 
+      await (update(sessions)..where(
+        (tbl) => tbl.userId.equals(userId),
+      )).write(const SessionsCompanion(isUserPrimary: Value(false)));
       await (update(
         sessions,
       )).write(const SessionsCompanion(isActive: Value(false)));
-
       await (update(sessions)..where(
-        (s) => s.userId.equals(userId),
-      )).write(const SessionsCompanion(isActive: Value(true)));
+        (s) => s.libraryName.equals(libraryName) & s.userId.equals(userId),
+      )).write(
+        const SessionsCompanion(
+          isActive: Value(true),
+          isUserPrimary: Value(true),
+        ),
+      );
 
       return true;
     });
   }
 
-  Future<void> removeSession(String userId) async {
-    await (delete(sessions)..where((s) => s.userId.equals(userId))).go();
+  Future<void> removeSession(int sessionId) async {
+    await (delete(sessions)..where((s) => s.id.equals(sessionId))).go();
   }
 
   Future<void> clearAllSessions() async {
     await delete(sessions).go();
+  }
+
+  Future<void> activateUserPrimary(String userId) async {
+    transaction(() async {
+      await (update(
+        sessions,
+      )).write(const SessionsCompanion(isActive: Value(false)));
+      await (update(sessions)..where(
+        (tbl) => tbl.userId.equals(userId) & tbl.isUserPrimary.equals(true),
+      )).write(const SessionsCompanion(isActive: Value(true)));
+    });
+  }
+
+  Future<void> deactivateAllSessions() async {
+    await (update(
+      sessions,
+    )).write(const SessionsCompanion(isActive: Value(false)));
   }
 }

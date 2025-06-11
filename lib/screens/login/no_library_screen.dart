@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:library_app/providers/app_initializer.dart';
+import 'package:library_app/providers/session_provider.dart';
 import 'package:library_app/screens/login/create_sheet.dart';
 import 'package:library_app/screens/link_library/link_library.dart';
 import 'package:library_app/screens/login/login_screen.dart';
@@ -102,6 +103,7 @@ class NoLibraryScreen extends ConsumerWidget {
                   GradientButton(
                     onPressed: () {
                       ref.read(googleSignInProvider).signOut();
+                      ref.read(sessionProvider.notifier).logout();
                       Navigator.of(context).pushReplacement(
                         MaterialPageRoute(builder: (_) => LoginScreen()),
                       );

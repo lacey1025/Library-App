@@ -47,10 +47,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _user = account;
       });
 
-      final sheetExists = await ref
+      final session = await ref
           .read(sessionProvider.notifier)
-          .switchSession(account.id);
-      final session = await ref.read(sessionProvider.future);
+          .getUserCurrentSession(account.id);
+      // final session = await ref.read(sessionProvider.future);
 
       if (widget.linkSheetId != null && widget.linkFolderId != null) {
         if (!mounted) return;
@@ -66,7 +66,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
       }
       // Maybe check if sheet is in drive - could also do in upload
-      else if (sheetExists && session != null) {
+      else if (session != null) {
+        if (!session.isActive) {
+          ref.read(sessionProvider.notifier).activateUserPrimary(account.id);
+        }
         if (!mounted) return;
         Navigator.of(
           context,
@@ -86,6 +89,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _handleSignOut() async {
     await ref.read(googleSignInProvider).signOut();
+    await ref.read(sessionProvider.notifier).logout();
     setState(() {
       _user = null;
     });
@@ -133,89 +137,84 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
           Center(
             child:
-                _user == null
-                    ? Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            "Welcome to the 34th ID Band Library Management App!",
-                            style: Theme.of(context).textTheme.titleLarge,
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: 32),
-                          Text(
-                            "To continue, please sign in with Google",
-                            style: Theme.of(context).textTheme.headlineMedium!
-                                .copyWith(fontWeight: FontWeight.w500),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: 32),
-                          GradientButton(
-                            onPressed: _handleSignIn,
-                            text: Text(
-                              "Google Sign In",
-                              style: Theme.of(
-                                context,
-                              ).textTheme.bodyMedium?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            height: 40,
-                            // width: 320,
-                            icon: Icon(
-                              Icons.login,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                          SizedBox(height: 32),
-                          if (isSignInError)
-                            Text(
-                              "Error signing in. Please try again",
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                        ],
-                      ),
-                    )
-                    : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircleAvatar(
-                          backgroundImage: NetworkImage(_user!.photoUrl ?? ''),
-                          radius: 30,
-                        ),
-                        const SizedBox(height: 10),
-                        Text('Hello, ${_user!.displayName}'),
-                        const SizedBox(height: 10),
-                        ElevatedButton.icon(
-                          onPressed: _handleSignOut,
-                          icon: const Icon(Icons.logout),
-                          label: const Text('Sign out'),
-                        ),
-                        const SizedBox(height: 10),
-                        if (widget.linkFolderId != null &&
-                            widget.linkSheetId != null)
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.of(context).pushReplacement(
-                                MaterialPageRoute(
-                                  builder:
-                                      (_) => JoinLibraryScreen(
-                                        sheetId: widget.linkSheetId!,
-                                        folderId: widget.linkFolderId!,
-                                        libraryName: widget.libraryName!,
-                                      ),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.logout),
-                            label: const Text('Continue with this account'),
-                          ),
-                      ],
+            // _user == null
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Welcome to the 34th ID Band Library Management App!",
+                    style: Theme.of(context).textTheme.titleLarge,
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 32),
+                  Text(
+                    "To continue, please sign in with Google",
+                    style: Theme.of(context).textTheme.headlineMedium!.copyWith(
+                      fontWeight: FontWeight.w500,
                     ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 32),
+                  GradientButton(
+                    onPressed: _handleSignIn,
+                    text: Text(
+                      "Google Sign In",
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    height: 40,
+                    // width: 320,
+                    icon: Icon(Icons.login, color: Colors.white, size: 20),
+                  ),
+                  SizedBox(height: 32),
+                  if (isSignInError)
+                    Text(
+                      "Error signing in. Please try again",
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                ],
+              ),
+            ),
+            // : Column(
+            //   mainAxisAlignment: MainAxisAlignment.center,
+            //   children: [
+            //     CircleAvatar(
+            //       backgroundImage: NetworkImage(_user!.photoUrl ?? ''),
+            //       radius: 30,
+            //     ),
+            //     const SizedBox(height: 10),
+            //     Text('Hello, ${_user!.displayName}'),
+            //     const SizedBox(height: 10),
+            //     ElevatedButton.icon(
+            //       onPressed: _handleSignOut,
+            //       icon: const Icon(Icons.logout),
+            //       label: const Text('Sign out'),
+            //     ),
+            //     const SizedBox(height: 10),
+            //     if (widget.linkFolderId != null &&
+            //         widget.linkSheetId != null)
+            //       ElevatedButton.icon(
+            //         onPressed: () {
+            //           Navigator.of(context).pushReplacement(
+            //             MaterialPageRoute(
+            //               builder:
+            //                   (_) => JoinLibraryScreen(
+            //                     sheetId: widget.linkSheetId!,
+            //                     folderId: widget.linkFolderId!,
+            //                     libraryName: widget.libraryName!,
+            //                   ),
+            //             ),
+            //           );
+            //         },
+            //         icon: const Icon(Icons.logout),
+            //         label: const Text('Continue with this account'),
+            //       ),
+            //   ],
+            // ),
           ),
         ],
       ),

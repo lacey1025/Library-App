@@ -33,7 +33,6 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
   Status _selectedStatus = Status.inLibrary;
   final Set<SubcategoryData> _subcategories = {};
 
-  bool _isEditing = false;
   String? _catalogNumberError;
   final _formGlobalKey = GlobalKey<FormState>();
   final TextEditingController _controller = TextEditingController();
@@ -56,14 +55,12 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
   void _addNewSubcategory() async {
     final newName = _controller.text.trim();
     if (newName.isEmpty || _selectedCategory == null) return;
-
     final categoryId = _selectedCategory!.category.id;
 
     final newSubcategory = SubcategoriesCompanion(
       categoryId: Value(categoryId),
       name: Value(newName),
     );
-
     final updatedCategory = await ref
         .read(categoriesNotifierProvider.notifier)
         .addSubcategory(newSubcategory);
@@ -78,8 +75,6 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
           updatedCategory.subcategories!.firstWhere((s) => (s.name == newName)),
         );
       }
-      _controller.clear();
-      _isEditing = false;
     });
   }
 
@@ -394,7 +389,6 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
     return GestureDetector(
       onTap: () {
         setState(() {
-          _isEditing = false;
           FocusScope.of(context).unfocus();
         });
       },
@@ -606,6 +600,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                                   onSubmitted: (value) {
                                     _addNewSubcategory();
                                   },
+                                  controller: _controller,
                                 ),
                             ],
                           ),

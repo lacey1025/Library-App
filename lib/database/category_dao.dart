@@ -9,6 +9,35 @@ class CategoryDao extends DatabaseAccessor<LibraryDatabase>
     with _$CategoryDaoMixin {
   CategoryDao(super.db);
 
+  Stream<List<CategoryWithDetails>> watchAllCategories() {
+    final query = select(categories).join([
+      leftOuterJoin(
+        subcategories,
+        subcategories.categoryId.equalsExp(categories.id),
+      ),
+    ]);
+
+    return query.watch().map((rows) {
+      final Map<int, CategoryWithDetails> categoryMap = {};
+
+      for (final row in rows) {
+        final category = row.readTable(categories);
+        final subcategory = row.readTableOrNull(subcategories);
+
+        categoryMap.putIfAbsent(
+          category.id,
+          () => CategoryWithDetails(category: category, subcategories: {}),
+        );
+
+        if (subcategory != null) {
+          categoryMap[category.id]!.subcategories!.add(subcategory);
+        }
+      }
+
+      return categoryMap.values.toList();
+    });
+  }
+
   Future<List<CategoryWithDetails>> getAllCategories() async {
     final query = select(categories).join([
       leftOuterJoin(

@@ -1,9 +1,10 @@
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:library_app/database/library_database.dart';
 import 'package:library_app/providers/app_initializer.dart';
 import 'package:library_app/providers/session_provider.dart';
-import 'package:library_app/screens/home/home.dart';
+import 'package:library_app/screens/link_library/fix_errors_page.dart';
 import 'package:library_app/shared/gradient_button.dart';
 
 class JoinLibraryScreen extends ConsumerStatefulWidget {
@@ -23,6 +24,33 @@ class JoinLibraryScreen extends ConsumerStatefulWidget {
 }
 
 class _JoinLibraryScreenState extends ConsumerState<JoinLibraryScreen> {
+  Future<void> _onJoinButtonPress() async {
+    final account = await ref.read(googleSignInProvider).signInSilently();
+    if (mounted && account == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Not signed in")));
+      return;
+    }
+
+    final session = SessionsCompanion(
+      libraryName: Value(widget.libraryName),
+      userId: Value(account!.id),
+      sheetId: Value(widget.sheetId),
+      driveFolderId: Value(widget.folderId),
+      isAdmin: Value(false),
+      isActive: Value(true),
+      isUserPrimary: Value(true),
+    );
+
+    await ref.read(sessionProvider.notifier).setSession(session);
+
+    if (!mounted) return;
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => FixErrorsPage()));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -100,31 +128,5 @@ class _JoinLibraryScreenState extends ConsumerState<JoinLibraryScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _onJoinButtonPress() async {
-    final account = await ref.read(googleSignInProvider).signInSilently();
-    if (mounted && account == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Not signed in")));
-      return;
-    }
-
-    final session = UserSessionData(
-      libraryName: widget.libraryName,
-      userId: account!.id,
-      sheetId: widget.sheetId,
-      driveFolderId: widget.folderId,
-      isAdmin: false,
-      isActive: true,
-    );
-
-    await ref.read(sessionProvider.notifier).setSession(session);
-
-    if (!mounted) return;
-    Navigator.of(
-      context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => Home()));
   }
 }

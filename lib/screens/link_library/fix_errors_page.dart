@@ -95,12 +95,14 @@ class _FixErrorsPageState extends ConsumerState<FixErrorsPage> {
     }
 
     if (newErrors.isEmpty) {
+      ref.read(sessionProvider.notifier).updateHasErrors(session.id, false);
       await Future.delayed(const Duration(milliseconds: 100));
       if (!mounted) return;
       Navigator.of(
         context,
       ).pushReplacement(MaterialPageRoute(builder: (_) => const Home()));
     } else {
+      ref.read(sessionProvider.notifier).updateHasErrors(session.id, true);
       setState(() {
         errors.clear();
         errors.addAll(newErrors);

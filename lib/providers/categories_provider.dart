@@ -4,14 +4,14 @@ import 'package:library_app/database/category_dao.dart';
 import 'package:library_app/models/category_with_details.dart';
 import 'package:library_app/providers/database_provider.dart';
 
-class CategoriesProvider extends AsyncNotifier<List<CategoryWithDetails>> {
+class CategoriesProvider extends StreamNotifier<List<CategoryWithDetails>> {
   late final CategoryDao _categoryDao;
 
   @override
-  Future<List<CategoryWithDetails>> build() async {
+  Stream<List<CategoryWithDetails>> build() {
     final db = ref.watch(databaseProvider);
     _categoryDao = CategoryDao(db);
-    return await _categoryDao.getAllCategories();
+    return _categoryDao.watchAllCategories();
   }
 
   Future<void> updateCategory(CategoriesCompanion category) async {
@@ -60,6 +60,6 @@ class CategoriesProvider extends AsyncNotifier<List<CategoryWithDetails>> {
 }
 
 final categoriesNotifierProvider =
-    AsyncNotifierProvider<CategoriesProvider, List<CategoryWithDetails>>(() {
-      return CategoriesProvider();
-    });
+    StreamNotifierProvider<CategoriesProvider, List<CategoryWithDetails>>(
+      CategoriesProvider.new,
+    );

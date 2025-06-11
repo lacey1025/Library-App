@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 
 class AddSubcategoryButton extends StatefulWidget {
   final void Function(String) onSubmitted;
+  final TextEditingController controller;
 
-  const AddSubcategoryButton({super.key, required this.onSubmitted});
+  const AddSubcategoryButton({
+    super.key,
+    required this.onSubmitted,
+    required this.controller,
+  });
 
   @override
   State<AddSubcategoryButton> createState() => _AddSubcategoryButtonState();
@@ -11,15 +16,36 @@ class AddSubcategoryButton extends StatefulWidget {
 
 class _AddSubcategoryButtonState extends State<AddSubcategoryButton> {
   bool _isEditing = false;
-  final TextEditingController _controller = TextEditingController();
+  late FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+    _focusNode.addListener(() {
+      if (!_focusNode.hasFocus && _isEditing) {
+        setState(() {
+          _isEditing = false;
+          widget.controller.clear();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
 
   void _submit() {
-    final text = _controller.text.trim();
+    final text = widget.controller.text.trim();
     if (text.isNotEmpty) {
       widget.onSubmitted(text);
-      _controller.clear();
-      setState(() => _isEditing = false);
+      widget.controller.clear();
     }
+    FocusScope.of(context).unfocus();
+    setState(() => _isEditing = false);
   }
 
   @override
@@ -27,8 +53,10 @@ class _AddSubcategoryButtonState extends State<AddSubcategoryButton> {
     return InkWell(
       splashColor: Colors.transparent,
       onTap: () {
-        FocusScope.of(context).unfocus();
         setState(() => _isEditing = true);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _focusNode.requestFocus();
+        });
       },
       borderRadius: BorderRadius.circular(8),
       child: Container(
@@ -43,9 +71,10 @@ class _AddSubcategoryButtonState extends State<AddSubcategoryButton> {
                 ? SizedBox(
                   width: 250,
                   child: TextField(
+                    focusNode: _focusNode,
                     cursorColor: Colors.white,
                     style: Theme.of(context).textTheme.bodyMedium,
-                    controller: _controller,
+                    controller: widget.controller,
                     autofocus: true,
                     onSubmitted: (_) => _submit(),
                     decoration: InputDecoration(
@@ -66,11 +95,5 @@ class _AddSubcategoryButtonState extends State<AddSubcategoryButton> {
                 : const Icon(Icons.add, color: Colors.white),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -78,13 +79,14 @@ class _LinkLibraryScreenState extends ConsumerState<LinkLibraryScreen> {
   Future<void> _linkLibrary() async {
     final startInfo = await ref.read(appInitializerProvider.future);
     final userId = startInfo.googleAccount!.id;
-    final session = UserSessionData(
-      libraryName: _libraryName!,
-      userId: userId,
-      sheetId: _selectedSheetId!,
-      driveFolderId: _selectedFolderId,
-      isAdmin: true,
-      isActive: true,
+    final session = SessionsCompanion(
+      libraryName: Value(_libraryName!),
+      userId: Value(userId),
+      sheetId: Value(_selectedSheetId!),
+      driveFolderId: Value(_selectedFolderId),
+      isAdmin: Value(true),
+      isActive: Value(true),
+      isUserPrimary: Value(true),
     );
     await ref.read(sessionProvider.notifier).setSession(session);
 
