@@ -26,19 +26,9 @@ class GoogleSheetImporter {
     final validRows = <List>[];
 
     await clearSheetFormatting(authHeaders, sheetId);
+    final rows = await getSheetRows();
 
-    final url = Uri.parse(
-      'https://sheets.googleapis.com/v4/spreadsheets/$sheetId/values/Sheet1!A1:J',
-    );
-
-    final response = await http.get(url, headers: authHeaders);
-    if (response.statusCode != 200) {
-      throw Exception('Failed to fetch sheet data: ${response.body}');
-    }
-
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final List<dynamic>? rows = data['values'];
-    if (rows == null || rows.length < 2) {
+    if (rows == null) {
       return [
         ImportError(rowIndex: -1, message: "Sheet is empty or missing data."),
       ];
@@ -46,7 +36,7 @@ class GoogleSheetImporter {
 
     final headerRow = rows[0];
     final header = HeaderHelper(headerRow);
-    header.requireHeaders([
+    final requiredHeaders = [
       'title',
       'composer',
       'arranger',
@@ -57,7 +47,28 @@ class GoogleSheetImporter {
       'status',
       'link',
       'change time',
-    ]);
+    ];
+
+    if (rows.isEmpty) {
+      final addHeadersOK = await header.createInitialHeaders(
+        sheetId: sheetId,
+        authHeaders: authHeaders,
+        initialHeaders: requiredHeaders,
+      );
+      if (addHeadersOK) {
+        return [];
+      } else {
+        return [
+          ImportError(
+            rowIndex: -1,
+            message: "Failed to add headers to empty sheet.",
+          ),
+        ];
+      }
+    }
+    header.requireHeaders(requiredHeaders);
+
+    if (rows.length < 2) return allErrors;
 
     final bodyRows = rows.sublist(1);
     final composersToInsert = <String>{};
@@ -256,5 +267,19 @@ class GoogleSheetImporter {
       }
     }
     return allErrors;
+  }
+
+  Future<List<dynamic>?> getSheetRows() async {
+    final url = Uri.parse(
+      'https://sheets.googleapis.com/v4/spreadsheets/$sheetId/values/Sheet1!A1:J',
+    );
+
+    final response = await http.get(url, headers: authHeaders);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to fetch sheet data: ${response.body}');
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return data['values'];
   }
 }

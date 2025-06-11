@@ -19,29 +19,97 @@ class DialogHelper {
       context: context,
       builder: (BuildContext context) {
         String? errorMessage;
+        String? exception;
 
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
               title: Text("Edit $name"),
-              content: CustomTextField(
-                textController: controller,
-                errorMessage: errorMessage,
-              ),
-              actions: _buildDialogActions(
-                context: context,
-                onConfirm: () {
-                  final error = validator();
-                  if (error == null) {
-                    handleSubmit();
-                    Navigator.of(context).pop();
-                  } else {
-                    setStateDialog(() {
-                      errorMessage = error;
-                    });
-                  }
-                },
-              ),
+              content:
+                  (exception == null)
+                      ? CustomTextField(
+                        textController: controller,
+                        errorMessage: errorMessage,
+                      )
+                      : _errorText(error: exception),
+              actions:
+                  (exception == null)
+                      ? _buildDialogActions(
+                        context: context,
+                        onConfirm: () {
+                          try {
+                            final error = validator();
+                            if (error == null) {
+                              handleSubmit();
+                              Navigator.of(context).pop();
+                            } else {
+                              setStateDialog(() {
+                                errorMessage = error;
+                              });
+                            }
+                          } catch (e) {
+                            setStateDialog(() {
+                              exception = e.toString();
+                            });
+                          }
+                        },
+                      )
+                      : _buildErrorActions(context: context),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  static void showCatalogEditDialog({
+    required BuildContext context,
+    required String name,
+    required TextEditingController controller,
+    required void Function() handleSubmit,
+    required Future<String?> Function() validator,
+  }) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        String? errorMessage;
+        String? exception;
+        final navigator = Navigator.of(context);
+
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text("Edit $name"),
+              content:
+                  (exception == null)
+                      ? CustomTextField(
+                        textController: controller,
+                        errorMessage: errorMessage,
+                      )
+                      : _errorText(error: exception),
+              actions:
+                  (exception == null)
+                      ? _buildDialogActions(
+                        context: context,
+                        onConfirm: () async {
+                          try {
+                            final error = await validator();
+                            if (error == null) {
+                              handleSubmit();
+                              navigator.pop();
+                            } else {
+                              setStateDialog(() {
+                                errorMessage = error;
+                              });
+                            }
+                          } catch (e) {
+                            setStateDialog(() {
+                              exception = e.toString();
+                            });
+                          }
+                        },
+                      )
+                      : _buildErrorActions(context: context),
             );
           },
         );
@@ -60,37 +128,51 @@ class DialogHelper {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        String? exception;
+
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
               title: Text("Edit $name"),
-              content: Container(
-                width: double.maxFinite,
-                constraints: BoxConstraints(maxHeight: 300),
-                child: ListView.builder(
-                  itemCount: categories.length,
-                  itemBuilder: (_, index) {
-                    var entry = categories[index];
-                    return CategoryCard(
-                      category: entry.category,
-                      onTap: (category) {
-                        setStateDialog(() {
-                          selectedCategory = category;
-                        });
-                        onCategorySelect(category);
-                      },
-                      selected: selectedCategory == entry.category,
-                    );
-                  },
-                ),
-              ),
-              actions: _buildDialogActions(
-                context: context,
-                onConfirm: () {
-                  handleSubmit();
-                  Navigator.of(context).pop();
-                },
-              ),
+              content:
+                  (exception == null)
+                      ? Container(
+                        width: double.maxFinite,
+                        constraints: BoxConstraints(maxHeight: 300),
+                        child: ListView.builder(
+                          itemCount: categories.length,
+                          itemBuilder: (_, index) {
+                            var entry = categories[index];
+                            return CategoryCard(
+                              category: entry.category,
+                              onTap: (category) {
+                                setStateDialog(() {
+                                  selectedCategory = category;
+                                });
+                                onCategorySelect(category);
+                              },
+                              selected: selectedCategory == entry.category,
+                            );
+                          },
+                        ),
+                      )
+                      : _errorText(error: exception),
+              actions:
+                  (exception == null)
+                      ? _buildDialogActions(
+                        context: context,
+                        onConfirm: () {
+                          try {
+                            handleSubmit();
+                            Navigator.of(context).pop();
+                          } catch (e) {
+                            setStateDialog(() {
+                              exception = e.toString();
+                            });
+                          }
+                        },
+                      )
+                      : _buildErrorActions(context: context),
             );
           },
         );
@@ -108,37 +190,51 @@ class DialogHelper {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        String? exception;
+
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
               title: Text("Edit $name"),
-              content: Container(
-                width: double.maxFinite,
-                constraints: BoxConstraints(maxHeight: 350),
-                child: ListView.builder(
-                  itemCount: Status.values.length,
-                  itemBuilder: (_, index) {
-                    var entry = Status.values[index];
-                    return StatusCard(
-                      status: entry,
-                      onTap: (status) {
-                        setStateDialog(() {
-                          selectedStatus = status;
-                        });
-                        onStatusSelect(status);
-                      },
-                      selected: selectedStatus == entry,
-                    );
-                  },
-                ),
-              ),
-              actions: _buildDialogActions(
-                context: context,
-                onConfirm: () {
-                  handleSubmit();
-                  Navigator.of(context).pop();
-                },
-              ),
+              content:
+                  (exception == null)
+                      ? Container(
+                        width: double.maxFinite,
+                        constraints: BoxConstraints(maxHeight: 350),
+                        child: ListView.builder(
+                          itemCount: Status.values.length,
+                          itemBuilder: (_, index) {
+                            var entry = Status.values[index];
+                            return StatusCard(
+                              status: entry,
+                              onTap: (status) {
+                                setStateDialog(() {
+                                  selectedStatus = status;
+                                });
+                                onStatusSelect(status);
+                              },
+                              selected: selectedStatus == entry,
+                            );
+                          },
+                        ),
+                      )
+                      : _errorText(error: exception),
+              actions:
+                  (exception == null)
+                      ? _buildDialogActions(
+                        context: context,
+                        onConfirm: () {
+                          try {
+                            handleSubmit();
+                            Navigator.of(context).pop();
+                          } catch (e) {
+                            setStateDialog(() {
+                              exception = e.toString();
+                            });
+                          }
+                        },
+                      )
+                      : _buildErrorActions(context: context),
             );
           },
         );
@@ -163,76 +259,98 @@ class DialogHelper {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        String? exception;
+
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
               title: Text("Edit $name"),
-              content: Container(
-                width: double.maxFinite,
-                constraints: BoxConstraints(maxHeight: 300),
-                child: Wrap(
-                  spacing: 8,
-                  children: [
-                    ...localSubcategories.map((subcategory) {
-                      return CustomChoiceChip(
-                        label: subcategory.name,
-                        isSelected: currentSelection.contains(subcategory),
-                        onSelected: (selected) {
-                          setStateDialog(() {
-                            isEditing = false;
-                            if (selected) {
-                              currentSelection.add(subcategory);
-                            } else {
-                              currentSelection.remove(subcategory);
-                            }
-                          });
-                        },
-                      );
-                    }),
-                    InkWell(
-                      splashColor: Colors.transparent,
-                      onTap: () {
-                        setStateDialog(() {
-                          isEditing = true;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: _buildAddSubcategoryButton(
-                        context,
-                        isEditing,
-                        controller,
-                        setStateDialog,
-                        (String newName) async {
-                          final newSub = await onAddSubcategory(newName);
-                          if (newSub != null) {
+              content:
+                  (exception == null)
+                      ? Container(
+                        width: double.maxFinite,
+                        constraints: BoxConstraints(maxHeight: 300),
+                        child: Wrap(
+                          spacing: 8,
+                          children: [
+                            ...localSubcategories.map((subcategory) {
+                              return CustomChoiceChip(
+                                label: subcategory.name,
+                                isSelected: currentSelection.contains(
+                                  subcategory,
+                                ),
+                                onSelected: (selected) {
+                                  setStateDialog(() {
+                                    isEditing = false;
+                                    if (selected) {
+                                      currentSelection.add(subcategory);
+                                    } else {
+                                      currentSelection.remove(subcategory);
+                                    }
+                                  });
+                                },
+                              );
+                            }),
+                            InkWell(
+                              splashColor: Colors.transparent,
+                              onTap: () {
+                                setStateDialog(() {
+                                  isEditing = true;
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: _buildAddSubcategoryButton(
+                                context,
+                                isEditing,
+                                controller,
+                                setStateDialog,
+                                (String newName) async {
+                                  final newSub = await onAddSubcategory(
+                                    newName,
+                                  );
+                                  if (newSub != null) {
+                                    setStateDialog(() {
+                                      localSubcategories.add(newSub);
+                                      currentSelection.add(newSub);
+                                    });
+                                  }
+                                },
+                                (bool value) {
+                                  setStateDialog(() {
+                                    isEditing = value;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      : _errorText(error: exception),
+              actions:
+                  (exception == null)
+                      ? _buildDialogActions(
+                        context: context,
+                        onConfirm: () {
+                          try {
+                            handleSubmit(currentSelection);
+                            Navigator.of(context).pop();
+                          } catch (e) {
                             setStateDialog(() {
-                              localSubcategories.add(newSub);
-                              currentSelection.add(newSub);
+                              exception = e.toString();
                             });
                           }
                         },
-                        (bool value) {
-                          setStateDialog(() {
-                            isEditing = value;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: _buildDialogActions(
-                context: context,
-                onConfirm: () {
-                  handleSubmit(currentSelection);
-                  Navigator.of(context).pop();
-                },
-              ),
+                      )
+                      : _buildErrorActions(context: context),
             );
           },
         );
       },
     );
+  }
+
+  static Widget _errorText({required error}) {
+    return Text("A system error has occurred: $error");
   }
 
   static Widget _buildAddSubcategoryButton(
@@ -312,6 +430,19 @@ class DialogHelper {
       TextButton(
         onPressed: onConfirm,
         child: Text("Confirm", style: Theme.of(context).textTheme.titleMedium),
+      ),
+    ];
+  }
+
+  static List<Widget> _buildErrorActions({required BuildContext context}) {
+    return [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: Text("Cancel", style: Theme.of(context).textTheme.titleMedium),
+      ),
+      TextButton(
+        onPressed: () {},
+        child: Text("Report", style: Theme.of(context).textTheme.titleMedium),
       ),
     ];
   }

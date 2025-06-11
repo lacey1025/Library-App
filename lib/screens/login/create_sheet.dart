@@ -138,7 +138,8 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
     );
 
     if (response.statusCode != 200) {
-      print("Failed to write headers: ${response.body}");
+      debugPrint("Failed to write headers: ${response.body}");
+      return;
     }
   }
 

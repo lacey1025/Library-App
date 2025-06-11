@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/rendering.dart';
 import 'package:library_app/models/score_with_details.dart';
+import 'package:library_app/utils/exceptions.dart';
 import 'library_database.dart';
 
 part 'scores_dao.g.dart';
@@ -92,35 +93,47 @@ class ScoresDao extends DatabaseAccessor<LibraryDatabase>
     ScoresCompanion score,
     Set<SubcategoryData>? subcategories,
   ) async {
-    late int finalId;
-    await transaction(() async {
-      if (id == null) {
-        finalId = await into(
-          scores,
-        ).insertReturning(score).then((row) => row.id);
-      } else {
-        finalId = id;
-        await (update(scores)..where((s) => s.id.equals(id))).write(score);
-      }
+    try {
+      late int finalId;
+      await transaction(() async {
+        if (id == null) {
+          finalId = await into(
+            scores,
+          ).insertReturning(score).then((row) => row.id);
+        } else {
+          finalId = id;
+          await (update(scores)..where((s) => s.id.equals(id))).write(score);
+        }
 
-      if (subcategories != null) {
-        await (delete(scoreSubcategories)
-          ..where((s) => s.scoreId.equals(finalId))).go();
+        if (subcategories != null) {
+          await (delete(scoreSubcategories)
+            ..where((s) => s.scoreId.equals(finalId))).go();
 
-        await batch((batch) {
-          batch.insertAll(
-            scoreSubcategories,
-            subcategories.map(
-              (subcategory) => ScoreSubcategoriesCompanion.insert(
-                scoreId: finalId,
-                subcategoryId: subcategory.id,
+          await batch((batch) {
+            batch.insertAll(
+              scoreSubcategories,
+              subcategories.map(
+                (subcategory) => ScoreSubcategoriesCompanion.insert(
+                  scoreId: finalId,
+                  subcategoryId: subcategory.id,
+                ),
               ),
-            ),
-          );
-        });
+            );
+          });
+        }
+      });
+      return await getScoreById(finalId);
+    } on SqliteException catch (e) {
+      if (e.message.contains('UNIQUE constraint failed')) {
+        final catalogNumber =
+            (score.catalogNumber.value != '')
+                ? score.catalogNumber.value
+                : '(unknown)';
+        throw CatalogNumberConflictException(catalogNumber);
+      } else {
+        rethrow;
       }
-    });
-    return await getScoreById(finalId);
+    }
   }
 
   Future<void> deleteScore(int id) async {

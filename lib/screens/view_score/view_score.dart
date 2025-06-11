@@ -161,17 +161,51 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
     );
   }
 
-  void _catalogNumberSubmit(ScoreWithDetails score) {
+  Future<String?> _catalogValidiator(String? value) async {
+    if (_selectedCategory == null) {
+      return "Please select a category";
+    }
+    if (value == null || value.isEmpty) {
+      _controller.text = await ref
+          .read(scoresNotifierProvider.notifier)
+          .getNewCatalogNumber(
+            _selectedCategory!.id,
+            _selectedCategory!.identifier,
+          );
+      return null;
+    }
+    final regex = RegExp(r'^[A-Za-z]+\s?\d{1,4}$');
+    if (!regex.hasMatch(value)) {
+      return 'Invalid format. Use: "Text1234" \n(letters + up to 4 digits)';
+    }
+    final valueIdentifier =
+        value
+            .substring(0, _selectedCategory!.identifier.length)
+            .trim()
+            .toUpperCase();
+    if (valueIdentifier != _selectedCategory!.identifier) {
+      return '${_selectedCategory!.name} numbers must start with ${_selectedCategory!.identifier}';
+    }
+    final numbers = RegExp(r'\d+').firstMatch(value)?.group(0);
+    if (numbers != null) {
+      _controller.text = valueIdentifier + numbers;
+    }
+    final isUnique = await ref
+        .read(scoresNotifierProvider.notifier)
+        .checkCatalogNumber(value, _selectedCategory!.id);
+    if (!isUnique) {
+      return 'Catalog number has already been used';
+    }
+    return null;
+  }
+
+  void _catalogNumberSubmit(ScoreWithDetails score) async {
     _controller.text = score.score.catalogNumber;
-    DialogHelper.showTextEditDialog(
+    DialogHelper.showCatalogEditDialog(
       context: context,
       name: "Catalog Number",
       controller: _controller,
-      validator:
-          () => ScoreWithDetails.catalogValidiator(
-            _controller.text,
-            score.category,
-          ),
+      validator: () => _catalogValidiator(_controller.text),
       handleSubmit: () {
         ref
             .read(scoresNotifierProvider.notifier)

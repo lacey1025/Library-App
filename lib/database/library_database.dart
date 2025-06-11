@@ -31,7 +31,7 @@ class Scores extends Table {
   TextColumn get title => text()();
   IntColumn get composerId => integer().references(Composers, #id)();
   TextColumn get arranger => text().withDefault(const Constant(""))();
-  TextColumn get catalogNumber => text()();
+  TextColumn get catalogNumber => text().unique()();
   TextColumn get notes => text().withDefault(const Constant(""))();
   IntColumn get categoryId => integer().references(Categories, #id)();
   TextColumn get status => text()();

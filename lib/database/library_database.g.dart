@@ -1352,6 +1352,7 @@ class $ScoresTable extends Scores with TableInfo<$ScoresTable, ScoreData> {
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
   );
   static const VerificationMeta _notesMeta = const VerificationMeta('notes');
   @override

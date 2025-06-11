@@ -90,17 +90,21 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
       }
       return null;
     }
-    final regex = RegExp(r'^[A-Za-z]+\d{1,4}$');
+    final regex = RegExp(r'^[A-Za-z]+\s?\d{1,4}$');
     if (!regex.hasMatch(value)) {
       return 'Invalid format. Use: "Text1234" \n(letters + up to 4 digits)';
     }
-    final valueIdentifier = value.substring(
-      0,
-      _selectedCategory!.category.identifier.length,
-    );
-    if (valueIdentifier.trim().toUpperCase() !=
-        _selectedCategory!.category.identifier) {
+    final valueIdentifier =
+        value
+            .substring(0, _selectedCategory!.category.identifier.length)
+            .trim()
+            .toUpperCase();
+    if (valueIdentifier != _selectedCategory!.category.identifier) {
       return '${_selectedCategory!.category.name} numbers must start with ${_selectedCategory!.category.identifier}';
+    }
+    final numbers = RegExp(r'\d+').firstMatch(value)?.group(0);
+    if (numbers != null) {
+      _catalogNumber = valueIdentifier + numbers;
     }
     final isUnique = await ref
         .read(scoresNotifierProvider.notifier)
@@ -164,7 +168,9 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                   style: TextStyle(fontWeight: FontWeight.w500),
                 ),
                 Text(
-                  "Category: ${_selectedCategory!.category.name}",
+                  (_selectedCategory != null)
+                      ? "Category: ${_selectedCategory!.category.name}"
+                      : "",
                   softWrap: true,
                   overflow: TextOverflow.visible,
                   style: TextStyle(fontWeight: FontWeight.w500),
@@ -470,7 +476,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                           decoration: InputDecoration(
                             labelText: "Catalog Number (optional)",
                             labelStyle: Theme.of(context).textTheme.bodyMedium,
-                            hintText: "XXX 0000",
+                            hintText: "XX0000",
                             errorMaxLines: 3,
                             errorStyle: TextStyle(color: Colors.red[400]),
                             errorText: _catalogNumberError,
