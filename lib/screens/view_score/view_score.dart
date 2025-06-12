@@ -24,7 +24,6 @@ class ViewScore extends ConsumerStatefulWidget {
 }
 
 class _ViewScoreState extends ConsumerState<ViewScore> {
-  // late Score score;
   final TextEditingController _controller = TextEditingController();
   CategoryData? _selectedCategory;
   Status? _selectedStatus;

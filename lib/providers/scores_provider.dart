@@ -15,7 +15,7 @@ class ScoresProvider extends AsyncNotifier<List<ScoreWithDetails>> {
     return await _scoresDao.getAllScores();
   }
 
-  Future<void> addScore(
+  Future<ScoreWithDetails> addScore(
     ScoresCompanion score,
     Set<SubcategoryData>? subcategories,
   ) async {
@@ -24,6 +24,30 @@ class ScoresProvider extends AsyncNotifier<List<ScoreWithDetails>> {
       null,
       score,
       subcategories,
+    );
+    final current = state.valueOrNull ?? [];
+    state = AsyncData([...current, newScore]);
+    return newScore;
+  }
+
+  Future<void> addScoreFromObject(ScoreWithDetails score) async {
+    state = AsyncData(state.value ?? []);
+    ScoresCompanion companion = ScoresCompanion(
+      id: Value(score.score.id),
+      title: Value(score.score.title),
+      composerId: Value(score.score.composerId),
+      arranger: Value(score.score.arranger),
+      catalogNumber: Value(score.score.catalogNumber),
+      notes: Value(score.score.notes),
+      categoryId: Value(score.score.categoryId),
+      status: Value(score.score.status),
+      link: Value(score.score.link),
+      changeTime: Value(DateTime.now()),
+    );
+    final newScore = await _scoresDao.insertOrUpdateScore(
+      null,
+      companion,
+      score.subcategories,
     );
     final current = state.valueOrNull ?? [];
     state = AsyncData([...current, newScore]);

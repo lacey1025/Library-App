@@ -76,7 +76,21 @@ class CategoryDao extends DatabaseAccessor<LibraryDatabase>
   }
 
   Future<int> insertOrUpdateCategory(CategoriesCompanion category) async {
-    return await into(categories).insertOnConflictUpdate(category);
+    // Try to find existing category
+    final existing =
+        await (select(categories)..where(
+          (tbl) => tbl.name.equals(category.name.value),
+        )).getSingleOrNull();
+
+    if (existing != null) {
+      // Update it
+      await (update(categories)
+        ..where((tbl) => tbl.id.equals(existing.id))).write(category);
+      return existing.id;
+    } else {
+      // Insert new
+      return await into(categories).insert(category);
+    }
   }
 
   Future<List<CategoryData>> bulkInsertCategories(

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:library_app/models/sheet_data.dart';
 import 'package:library_app/utils/exceptions.dart';
 import 'package:http/http.dart' as http;
 
@@ -60,5 +60,21 @@ class HeaderHelper {
       return false;
     }
     return true;
+  }
+
+  List<String>? orderByHeaderOrder({required SheetData sheetData}) {
+    final scoreEntryList = <String>[];
+    final score = sheetData.sheetData;
+    final sortedMap = Map.fromEntries(
+      _headerMap.entries.toList()..sort((a, b) => a.value.compareTo(b.value)),
+    );
+    for (final title in sortedMap.keys) {
+      final scoreEntry = score[title];
+      if (scoreEntry == null) {
+        return null;
+      }
+      scoreEntryList.add(scoreEntry);
+    }
+    return scoreEntryList;
   }
 }

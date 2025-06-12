@@ -3,16 +3,24 @@ import 'package:drift/drift.dart' hide Column;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:library_app/database/library_database.dart';
 import 'package:library_app/models/category_with_details.dart';
+import 'package:library_app/models/score_with_details.dart';
+import 'package:library_app/models/sheet_data.dart';
 import 'package:library_app/models/status.dart';
+import 'package:library_app/providers/app_initializer.dart';
 import 'package:library_app/providers/categories_provider.dart';
+import 'package:library_app/providers/database_provider.dart';
 import 'package:library_app/providers/scores_provider.dart';
+import 'package:library_app/providers/session_provider.dart';
 import 'package:library_app/screens/create/add_subcategory_button.dart';
 import 'package:library_app/screens/home/home.dart';
 import 'package:library_app/shared/app_drawer.dart';
+import 'package:library_app/shared/global_snackbar.dart';
 import 'package:library_app/shared/gradient_button.dart';
 import 'package:library_app/shared/status_card.dart';
 import 'package:library_app/shared/appbar.dart';
 import 'package:library_app/shared/custom_chip.dart';
+import 'package:library_app/utils/exceptions.dart';
+import 'package:library_app/utils/google_sheet_importer.dart';
 
 class CreateScore extends ConsumerStatefulWidget {
   const CreateScore({super.key});
@@ -118,152 +126,208 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
   void _handleSubmit() async {
     final catalogError = await _catalogValidiator(_catalogNumber);
     if (!mounted) return;
+
     if (catalogError != null) {
       setState(() {
         _catalogNumberError = catalogError;
       });
       return;
     }
+
     setState(() {
       _catalogNumberError = null;
     });
-    if (_formGlobalKey.currentState!.validate()) {
-      _formGlobalKey.currentState!.save();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        FocusScope.of(context).unfocus();
-      });
 
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text("Confirm Details"),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Title: $_title",
-                  softWrap: true,
-                  overflow: TextOverflow.visible,
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-                Text(
-                  "Composer: $_composer",
-                  softWrap: true,
-                  overflow: TextOverflow.visible,
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-                if (_arranger != null && _arranger!.isNotEmpty)
-                  Text(
-                    "Arranger: $_arranger",
-                    softWrap: true,
-                    overflow: TextOverflow.visible,
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                Text(
-                  "Catalog Number: $_catalogNumber",
-                  softWrap: true,
-                  overflow: TextOverflow.visible,
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-                Text(
-                  (_selectedCategory != null)
-                      ? "Category: ${_selectedCategory!.category.name}"
-                      : "",
-                  softWrap: true,
-                  overflow: TextOverflow.visible,
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-                if (_selectedSubcategories.isNotEmpty)
-                  Text(
-                    "Subcategories: ${_selectedSubcategories.map((s) => s.name).join(', ')}",
-                    softWrap: true,
-                    overflow: TextOverflow.visible,
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                Text(
-                  "Status: ${_selectedStatus.title}",
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-                if (_notes != null && _notes!.isNotEmpty)
-                  Text(
-                    "Notes: $_notes",
-                    softWrap: true,
-                    overflow: TextOverflow.visible,
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  FocusScope.of(context).unfocus();
-                  _catalogNumber = "";
-                },
-                child: Text(
-                  "Edit",
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              TextButton(
-                onPressed: () async {
-                  ComposerData? composer = await ref
-                      .read(scoresNotifierProvider.notifier)
-                      .getComposer(_composer);
-                  composer ??= await ref
-                      .read(scoresNotifierProvider.notifier)
-                      .addComposer(_composer);
+    final isValid = _validateAndSaveForm();
+    if (!isValid) return;
 
-                  await ref.read(scoresNotifierProvider.notifier).addScore(
-                    ScoresCompanion(
-                      title: Value(_title),
-                      composerId: Value(composer.id),
-                      arranger:
-                          (_arranger != null && _arranger!.isNotEmpty)
-                              ? Value(_arranger!)
-                              : Value.absent(),
-                      catalogNumber: Value(_catalogNumber!),
-                      notes:
-                          (_notes != null && _notes!.isNotEmpty)
-                              ? Value(_notes!)
-                              : Value.absent(),
-                      categoryId: Value(_selectedCategory!.category.id),
-                      status: Value(_selectedStatus.title),
-                      changeTime: Value(DateTime.now()),
-                    ),
-                    {..._selectedSubcategories},
-                  );
-                  _formGlobalKey.currentState!.reset();
-                  _selectedSubcategories.clear();
-                  _selectedCategory = null;
-                  _selectedStatus = Status.inLibrary;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusScope.of(context).unfocus();
+    });
 
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _scrollController.animateTo(
-                      0.0,
-                      duration: Duration(milliseconds: 300),
-                      curve: Curves.easeOut,
-                    );
-                    FocusScope.of(context).unfocus();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (ctx) => const Home()),
-                    );
-                  });
-                },
-                child: Text(
-                  "Confirm",
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-            ],
-          );
-        },
-      );
-    }
+    showDialog(
+      context: context,
+      builder: (BuildContext context) => _buildConfirmationDialog(context),
+    );
   }
+
+  bool _validateAndSaveForm() {
+    final isValid = _formGlobalKey.currentState!.validate();
+    if (isValid) {
+      _formGlobalKey.currentState!.save();
+    }
+    return isValid;
+  }
+
+  AlertDialog _buildConfirmationDialog(BuildContext context) {
+    return AlertDialog(
+      title: Text("Confirm Details"),
+      content: _buildConfirmationDialogContent(),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+            FocusScope.of(context).unfocus();
+            _catalogNumber = "";
+          },
+          child: Text("Edit", style: Theme.of(context).textTheme.titleMedium),
+        ),
+        TextButton(
+          onPressed: () async {
+            final newScore = await _addScoreToDatabase(context);
+            Future(
+              () => _handleScoreUploadAndNotify(ref: ref, newScore: newScore),
+            );
+
+            _formGlobalKey.currentState!.reset();
+            _selectedSubcategories.clear();
+            _selectedCategory = null;
+            _selectedStatus = Status.inLibrary;
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollController.animateTo(
+                0.0,
+                duration: Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+              );
+              FocusScope.of(context).unfocus();
+              Navigator.pop(context);
+              // ScaffoldMessenger.of(context).showSnackBar(
+              //   SnackBar(
+              //     content: Text(message),
+              //     duration: Duration(seconds: 2),
+              //   ),
+              // );
+            });
+          },
+          child: Text(
+            "Confirm",
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConfirmationDialogContent() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Title: $_title", style: _boldTextStyle),
+        Text("Composer: $_composer", style: _boldTextStyle),
+        if (_arranger?.isNotEmpty ?? false)
+          Text("Arranger: $_arranger", style: _boldTextStyle),
+        Text("Catalog Number: $_catalogNumber", style: _boldTextStyle),
+        if (_selectedCategory != null)
+          Text(
+            "Category: ${_selectedCategory!.category.name}",
+            style: _boldTextStyle,
+          ),
+        if (_selectedSubcategories.isNotEmpty)
+          Text(
+            "Subcategories: ${_selectedSubcategories.map((s) => s.name).join(', ')}",
+            style: _boldTextStyle,
+          ),
+        Text("Status: ${_selectedStatus.title}", style: _boldTextStyle),
+        if (_notes?.isNotEmpty ?? false)
+          Text("Notes: $_notes", style: _boldTextStyle),
+      ],
+    );
+  }
+
+  Future<ScoreWithDetails> _addScoreToDatabase(BuildContext context) async {
+    ComposerData? composer = await ref
+        .read(scoresNotifierProvider.notifier)
+        .getComposer(_composer);
+
+    composer ??= await ref
+        .read(scoresNotifierProvider.notifier)
+        .addComposer(_composer);
+
+    final newScore = await ref.read(scoresNotifierProvider.notifier).addScore(
+      ScoresCompanion(
+        title: Value(_title),
+        composerId: Value(composer.id),
+        arranger:
+            (_arranger?.isNotEmpty ?? false)
+                ? Value(_arranger!)
+                : Value.absent(),
+        catalogNumber: Value(_catalogNumber!),
+        notes: (_notes?.isNotEmpty ?? false) ? Value(_notes!) : Value.absent(),
+        categoryId: Value(_selectedCategory!.category.id),
+        status: Value(_selectedStatus.title),
+        changeTime: Value(DateTime.now()),
+      ),
+      {..._selectedSubcategories},
+    );
+    return newScore;
+  }
+
+  Future<void> _addScoreToSheet(ScoreWithDetails score) async {
+    final scoreToSheet = SheetData(score: score);
+    final startInfo = await ref.read(appInitializerProvider.future);
+    final authHeaders = await startInfo.googleAccount!.authHeaders;
+    final db = ref.read(databaseProvider);
+
+    final session = await ref.read(sessionProvider.future);
+    if (session == null) {
+      return;
+    }
+    final sheetId = session.sheetId;
+
+    final importer = GoogleSheetHelper(
+      sheetId: sheetId,
+      authHeaders: authHeaders,
+      db: db,
+    );
+
+    await importer.insertOrUpdate(rowData: scoreToSheet);
+  }
+
+  Future<void> _handleScoreUploadAndNotify({
+    required WidgetRef ref,
+    required ScoreWithDetails newScore,
+  }) async {
+    String message = "Score added successfully!";
+    bool failed = false;
+
+    try {
+      await _addScoreToSheet(newScore);
+    } on AddToSheetException catch (e) {
+      message = "Failed to update Sheet: ${e.message}";
+      failed = true;
+      ref.read(scoresNotifierProvider.notifier).removeScore(newScore.score);
+    }
+
+    GlobalSnackbar.show(
+      message: message,
+      isError: failed,
+      onRetry: () async {
+        try {
+          await ref
+              .read(scoresNotifierProvider.notifier)
+              .addScoreFromObject(newScore);
+          await _addScoreToSheet(newScore);
+          GlobalSnackbar.show(
+            message: "Retry successful!",
+            isError: false,
+            onRetry: () {},
+          );
+        } catch (e) {
+          GlobalSnackbar.show(
+            message: "Retry failed: ${e.toString()}",
+            isError: true,
+            onRetry: () {
+              _handleScoreUploadAndNotify(ref: ref, newScore: newScore);
+            },
+          );
+        }
+      },
+    );
+  }
+
+  TextStyle get _boldTextStyle => const TextStyle(fontWeight: FontWeight.w500);
 
   Future<Map<String, String>?> _showCategoryDialog(
     GlobalKey<FormState> dialogFormKey,

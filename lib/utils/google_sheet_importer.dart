@@ -3,18 +3,20 @@ import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:library_app/database/library_database.dart';
+import 'package:library_app/models/sheet_data.dart';
+import 'package:library_app/utils/exceptions.dart';
 import 'package:library_app/utils/header_helper.dart';
 import 'package:library_app/utils/highlight_error_cells.dart';
 import 'package:library_app/utils/schema_validator.dart';
 
-class GoogleSheetImporter {
+class GoogleSheetHelper {
   final String sheetId;
   final Map<String, String> authHeaders;
   final LibraryDatabase db;
 
   final List errorList = [];
 
-  GoogleSheetImporter({
+  GoogleSheetHelper({
     required this.sheetId,
     required this.authHeaders,
     required this.db,
@@ -26,7 +28,7 @@ class GoogleSheetImporter {
     final validRows = <List>[];
 
     await clearSheetFormatting(authHeaders, sheetId);
-    final rows = await getSheetRows();
+    final rows = await _getSheetRows();
 
     if (rows == null) {
       return [
@@ -269,17 +271,104 @@ class GoogleSheetImporter {
     return allErrors;
   }
 
-  Future<List<dynamic>?> getSheetRows() async {
+  Future<List<dynamic>?> _getSheetRows() async {
     final url = Uri.parse(
       'https://sheets.googleapis.com/v4/spreadsheets/$sheetId/values/Sheet1!A1:J',
     );
 
     final response = await http.get(url, headers: authHeaders);
     if (response.statusCode != 200) {
-      throw Exception('Failed to fetch sheet data: ${response.body}');
+      throw AddToSheetException('Failed to fetch sheet data');
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     return data['values'];
+  }
+
+  Future<int?> _findRowIdxByCatalogNum(
+    List<dynamic> rows,
+    HeaderHelper header,
+    String catalogNumber,
+  ) async {
+    for (int i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      final cell = header.getCell(row, "catalog number");
+      if (cell.cell == catalogNumber) {
+        return i + 2;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _updateRow({
+    required int rowIndex,
+    required List<String> rowData,
+  }) async {
+    final range = 'Sheet1!A$rowIndex:J$rowIndex';
+    final url = Uri.parse(
+      'https://sheets.googleapis.com/v4/spreadsheets/$sheetId/values/$range?valueInputOption=USER_ENTERED',
+    );
+
+    final response = await http.put(
+      url,
+      headers: {...authHeaders, 'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'range': range,
+        'majorDimension': 'ROWS',
+        'values': [rowData],
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw AddToSheetException('Failed to update row.');
+    }
+  }
+
+  Future<void> _appendRow(List<String> rowData) async {
+    final url = Uri.parse(
+      'https://sheets.googleapis.com/v4/spreadsheets/$sheetId/values/Sheet1!A:J:append?valueInputOption=USER_ENTERED',
+    );
+
+    final response = await http.post(
+      url,
+      headers: {...authHeaders, 'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'values': [rowData],
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw AddToSheetException('Failed to insert row');
+    }
+  }
+
+  Future<void> insertOrUpdate({required SheetData rowData}) async {
+    final rows = await _getSheetRows();
+    if (rows == null) {
+      throw AddToSheetException("Failed to fetch sheet data");
+    }
+    final headers = rows[0];
+    final headerHelper = HeaderHelper(headers);
+    final body = rows.sublist(1);
+    final catalogNumber = rowData.sheetData["catalog number"];
+    final valuesToUpload = headerHelper.orderByHeaderOrder(sheetData: rowData);
+
+    if (valuesToUpload == null) {
+      throw AddToSheetException("Failed to match score to sheet");
+    }
+    if (catalogNumber == null || catalogNumber.isEmpty) {
+      throw AddToSheetException("Could not get catalog number from sheet data");
+    }
+    final rowIndex = await _findRowIdxByCatalogNum(
+      body,
+      headerHelper,
+      catalogNumber,
+    );
+
+    if (rowIndex != null) {
+      await _updateRow(rowIndex: rowIndex, rowData: valuesToUpload);
+    } else {
+      await _appendRow(valuesToUpload);
+    }
   }
 }

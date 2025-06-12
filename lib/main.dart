@@ -3,10 +3,11 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:library_app/screens/splash_screen/splash_screen.dart';
+import 'package:library_app/shared/global_snackbar.dart';
 import 'package:library_app/theme.dart';
 
 void main() {
-  runApp(const ProviderScope(child: LibraryApp()));
+  runApp(ProviderScope(child: LibraryApp()));
 }
 
 class LibraryApp extends StatefulWidget {
@@ -85,6 +86,7 @@ class _LibraryAppState extends State<LibraryApp> {
       title: 'Library App',
       theme: primaryTheme,
       home: const SplashScreen(),
+      scaffoldMessengerKey: GlobalSnackbar.messengerKey,
     );
   }
 }

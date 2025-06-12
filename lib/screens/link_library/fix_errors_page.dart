@@ -69,7 +69,7 @@ class _FixErrorsPageState extends ConsumerState<FixErrorsPage> {
     }
     final sheetId = session.sheetId;
 
-    final importer = GoogleSheetImporter(
+    final importer = GoogleSheetHelper(
       sheetId: sheetId,
       authHeaders: authHeaders,
       db: db,

@@ -17,3 +17,12 @@ class CatalogNumberConflictException implements Exception {
       'CatalogNumberConflictException: '
       'Catalog number "$catalogNumber" already exists.';
 }
+
+class AddToSheetException implements Exception {
+  final String message;
+
+  AddToSheetException(this.message);
+
+  @override
+  String toString() => 'Could not upload: $message';
+}
