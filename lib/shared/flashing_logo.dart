@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 class FlashingLogo extends StatefulWidget {
-  const FlashingLogo({super.key});
+  const FlashingLogo({super.key, this.message});
+  final String? message;
 
   @override
   State<FlashingLogo> createState() => _FlashingLogoState();
@@ -34,15 +35,26 @@ class _FlashingLogoState extends State<FlashingLogo>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _colorAnimation,
-      builder: (context, child) {
-        return Image.asset(
-          'assets/img/redbull.png',
-          height: 200,
-          color: _colorAnimation.value,
-        );
-      },
+    return Stack(
+      children: [
+        Center(
+          child: AnimatedBuilder(
+            animation: _colorAnimation,
+            builder: (context, child) {
+              return Image.asset(
+                'assets/img/redbull.png',
+                height: 200,
+                color: _colorAnimation.value,
+              );
+            },
+          ),
+        ),
+        if (widget.message != null)
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, 32, 16, 0),
+            child: Text(widget.message!, textAlign: TextAlign.center),
+          ),
+      ],
     );
   }
 }

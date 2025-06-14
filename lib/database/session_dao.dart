@@ -93,4 +93,14 @@ class SessionDao extends DatabaseAccessor<LibraryDatabase>
       sessions,
     )).write(const SessionsCompanion(isActive: Value(false)));
   }
+
+  Future<void> updateChangeTime() async {
+    final session = await getCurrentSession();
+    if (session == null) {
+      throw Exception("Could not fetch session");
+    }
+    await (update(sessions)..where(
+      (s) => (s.id).equals(session.id),
+    )).write(SessionsCompanion(sheetRefreshTime: Value(DateTime.now())));
+  }
 }

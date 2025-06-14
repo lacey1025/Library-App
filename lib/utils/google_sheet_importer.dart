@@ -1,9 +1,13 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:library_app/database/library_database.dart';
 import 'package:library_app/models/sheet_data.dart';
+import 'package:library_app/providers/app_initializer.dart';
+import 'package:library_app/providers/database_provider.dart';
+import 'package:library_app/providers/session_provider.dart';
 import 'package:library_app/utils/exceptions.dart';
 import 'package:library_app/utils/header_helper.dart';
 import 'package:library_app/utils/highlight_error_cells.dart';
@@ -15,12 +19,35 @@ class GoogleSheetHelper {
   final LibraryDatabase db;
 
   final List errorList = [];
+  HeaderHelper? _headerHelper;
 
   GoogleSheetHelper({
     required this.sheetId,
     required this.authHeaders,
     required this.db,
   });
+
+  static Future<GoogleSheetHelper> fromRef(WidgetRef ref) async {
+    final session = await ref.read(sessionProvider.future);
+    if (session == null) {
+      throw AddToSheetException("Missing session info");
+    }
+
+    final init = await ref.read(appInitializerProvider.future);
+    final googleAccount = init.googleAccount;
+    if (googleAccount == null) {
+      throw AddToSheetException("Google account not available");
+    }
+    final authHeaders = await googleAccount.authHeaders;
+
+    final db = ref.read(databaseProvider);
+
+    return GoogleSheetHelper(
+      sheetId: session.sheetId,
+      authHeaders: authHeaders,
+      db: db,
+    );
+  }
 
   Future<List<ImportError>> importScores() async {
     final validator = RowValidator();
@@ -268,6 +295,7 @@ class GoogleSheetHelper {
         return allErrors;
       }
     }
+
     return allErrors;
   }
 
@@ -285,14 +313,21 @@ class GoogleSheetHelper {
     return data['values'];
   }
 
-  Future<int?> _findRowIdxByCatalogNum(
-    List<dynamic> rows,
-    HeaderHelper header,
-    String catalogNumber,
-  ) async {
-    for (int i = 0; i < rows.length; i++) {
-      final row = rows[i];
-      final cell = header.getCell(row, "catalog number");
+  Future<int?> _findRowIdxByCatalogNum(String catalogNumber) async {
+    final rows = await _getSheetRows();
+    if (rows == null) {
+      throw AddToSheetException("Failed to fetch sheet data");
+    }
+    final headers = rows[0];
+    final body = rows.sublist(1);
+    _headerHelper = HeaderHelper(headers);
+    if (_headerHelper == null) {
+      throw AddToSheetException("Could not get headers");
+    }
+
+    for (int i = 0; i < body.length; i++) {
+      final row = body[i];
+      final cell = _headerHelper!.getCell(row, "catalog number");
       if (cell.cell == catalogNumber) {
         return i + 2;
       }
@@ -342,28 +377,63 @@ class GoogleSheetHelper {
     }
   }
 
-  Future<void> insertOrUpdate({required SheetData rowData}) async {
-    final rows = await _getSheetRows();
-    if (rows == null) {
-      throw AddToSheetException("Failed to fetch sheet data");
+  Future<void> deleteRow({required String catalogNumber}) async {
+    final rowIndex = await _findRowIdxByCatalogNum(catalogNumber);
+    final tabId = await getTabId(authHeaders, sheetId);
+    if (rowIndex == null) {
+      throw AddToSheetException("Score has already been deleted.");
     }
-    final headers = rows[0];
-    final headerHelper = HeaderHelper(headers);
-    final body = rows.sublist(1);
-    final catalogNumber = rowData.sheetData["catalog number"];
-    final valuesToUpload = headerHelper.orderByHeaderOrder(sheetData: rowData);
+    final url = Uri.parse(
+      'https://sheets.googleapis.com/v4/spreadsheets/$sheetId:batchUpdate',
+    );
+    final body = {
+      "requests": [
+        {
+          "deleteDimension": {
+            "range": {
+              "sheetId": tabId,
+              "dimension": "ROWS",
+              "startIndex": rowIndex - 1,
+              "endIndex": rowIndex,
+            },
+          },
+        },
+      ],
+    };
+
+    final response = await http.post(
+      url,
+      headers: authHeaders,
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode != 200) {
+      print("SHEET ID: $sheetId");
+      print(response.body);
+      throw AddToSheetException("Failed to delete row. Please try again");
+    }
+  }
+
+  Future<void> insertOrUpdate({
+    required SheetData rowData,
+    String? oldCatNum,
+  }) async {
+    final catalogNumber =
+        (oldCatNum == null) ? rowData.sheetData["catalog number"] : oldCatNum;
+
+    if (catalogNumber == null || catalogNumber.isEmpty) {
+      throw AddToSheetException("Could not get catalog number from sheet data");
+    }
+
+    final rowIndex = await _findRowIdxByCatalogNum(catalogNumber);
+
+    final valuesToUpload = _headerHelper!.orderByHeaderOrder(
+      sheetData: rowData,
+    );
 
     if (valuesToUpload == null) {
       throw AddToSheetException("Failed to match score to sheet");
     }
-    if (catalogNumber == null || catalogNumber.isEmpty) {
-      throw AddToSheetException("Could not get catalog number from sheet data");
-    }
-    final rowIndex = await _findRowIdxByCatalogNum(
-      body,
-      headerHelper,
-      catalogNumber,
-    );
 
     if (rowIndex != null) {
       await _updateRow(rowIndex: rowIndex, rowData: valuesToUpload);

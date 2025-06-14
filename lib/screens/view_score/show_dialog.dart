@@ -183,7 +183,7 @@ class DialogHelper {
   static void showStatusDialog({
     required BuildContext context,
     required String name,
-    required dynamic selectedStatus,
+    required Status? selectedStatus,
     required void Function(dynamic) onStatusSelect,
     required void Function() handleSubmit,
   }) {

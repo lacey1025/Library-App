@@ -59,4 +59,10 @@ class SessionNotifier extends AsyncNotifier<UserSessionData?> {
     final currentSession = await _sessionDao.getCurrentSession();
     state = AsyncData(currentSession);
   }
+
+  Future<void> updateSheetRefreshTime() async {
+    await _sessionDao.updateChangeTime();
+    final currentSession = await _sessionDao.getCurrentSession();
+    state = AsyncData(currentSession);
+  }
 }

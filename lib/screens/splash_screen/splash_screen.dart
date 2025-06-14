@@ -72,7 +72,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           }
           if (!mounted) return;
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const FixErrorsPage()),
+            PageRouteBuilder(
+              pageBuilder: (_, __, ___) => const FixErrorsPage(),
+              transitionDuration: Duration(
+                milliseconds: 400,
+              ), // No transition time
+              reverseTransitionDuration: Duration(
+                milliseconds: 400,
+              ), // No reverse transition either
+            ),
           );
         }
       }
@@ -87,6 +95,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Center(child: FlashingLogo()));
+    return Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
+        child: FlashingLogo(),
+      ),
+    );
   }
 }

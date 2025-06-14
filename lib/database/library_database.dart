@@ -19,6 +19,8 @@ class Sessions extends Table {
   BoolColumn get isActive => boolean().withDefault(Constant(false))();
   BoolColumn get isUserPrimary => boolean().withDefault(Constant(false))();
   BoolColumn get hasSheetErrors => boolean().withDefault(Constant(false))();
+  DateTimeColumn get sheetRefreshTime =>
+      dateTime().withDefault(currentDateAndTime)();
 
   // @override
   // Set<Column> get primaryKey => {userId};

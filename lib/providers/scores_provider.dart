@@ -53,7 +53,7 @@ class ScoresProvider extends AsyncNotifier<List<ScoreWithDetails>> {
     state = AsyncData([...current, newScore]);
   }
 
-  Future<void> updateScoreFromObject(
+  Future<ScoreWithDetails> updateScoreFromObject(
     ScoreData score,
     Set<SubcategoryData>? subcategories,
   ) async {
@@ -80,10 +80,16 @@ class ScoresProvider extends AsyncNotifier<List<ScoreWithDetails>> {
       for (final score in current)
         if (score.score.id == newScore.score.id) newScore else score,
     ]);
+    return newScore;
   }
 
-  Future<void> updateScore(String item, dynamic value, int id) async {
+  Future<ScoreWithDetails?> updateScore(
+    String item,
+    dynamic value,
+    int id,
+  ) async {
     state = AsyncData(state.value ?? []);
+    ScoreWithDetails? newScore;
     try {
       ScoresCompanion companion = ScoresCompanion(
         title: (item == 'title') ? Value(value) : Value.absent(),
@@ -105,7 +111,7 @@ class ScoresProvider extends AsyncNotifier<List<ScoreWithDetails>> {
         subcategories = {};
       }
 
-      final newScore = await _scoresDao.insertOrUpdateScore(
+      newScore = await _scoresDao.insertOrUpdateScore(
         id,
         companion,
         subcategories,
@@ -118,6 +124,7 @@ class ScoresProvider extends AsyncNotifier<List<ScoreWithDetails>> {
     } catch (e, st) {
       state = AsyncError(e, st);
     }
+    return newScore;
   }
 
   Future<void> removeScore(ScoreData score) async {

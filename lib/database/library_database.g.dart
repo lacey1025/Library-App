@@ -124,6 +124,19 @@ class $SessionsTable extends Sessions
     ),
     defaultValue: Constant(false),
   );
+  static const VerificationMeta _sheetRefreshTimeMeta = const VerificationMeta(
+    'sheetRefreshTime',
+  );
+  @override
+  late final GeneratedColumn<DateTime> sheetRefreshTime =
+      GeneratedColumn<DateTime>(
+        'sheet_refresh_time',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+        defaultValue: currentDateAndTime,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -135,6 +148,7 @@ class $SessionsTable extends Sessions
     isActive,
     isUserPrimary,
     hasSheetErrors,
+    sheetRefreshTime,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -217,6 +231,15 @@ class $SessionsTable extends Sessions
         ),
       );
     }
+    if (data.containsKey('sheet_refresh_time')) {
+      context.handle(
+        _sheetRefreshTimeMeta,
+        sheetRefreshTime.isAcceptableOrUnknown(
+          data['sheet_refresh_time']!,
+          _sheetRefreshTimeMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -270,6 +293,11 @@ class $SessionsTable extends Sessions
             DriftSqlType.bool,
             data['${effectivePrefix}has_sheet_errors'],
           )!,
+      sheetRefreshTime:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}sheet_refresh_time'],
+          )!,
     );
   }
 
@@ -289,6 +317,7 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
   final bool isActive;
   final bool isUserPrimary;
   final bool hasSheetErrors;
+  final DateTime sheetRefreshTime;
   const UserSessionData({
     required this.id,
     required this.libraryName,
@@ -299,6 +328,7 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
     required this.isActive,
     required this.isUserPrimary,
     required this.hasSheetErrors,
+    required this.sheetRefreshTime,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -314,6 +344,7 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
     map['is_active'] = Variable<bool>(isActive);
     map['is_user_primary'] = Variable<bool>(isUserPrimary);
     map['has_sheet_errors'] = Variable<bool>(hasSheetErrors);
+    map['sheet_refresh_time'] = Variable<DateTime>(sheetRefreshTime);
     return map;
   }
 
@@ -331,6 +362,7 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
       isActive: Value(isActive),
       isUserPrimary: Value(isUserPrimary),
       hasSheetErrors: Value(hasSheetErrors),
+      sheetRefreshTime: Value(sheetRefreshTime),
     );
   }
 
@@ -349,6 +381,7 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
       isActive: serializer.fromJson<bool>(json['isActive']),
       isUserPrimary: serializer.fromJson<bool>(json['isUserPrimary']),
       hasSheetErrors: serializer.fromJson<bool>(json['hasSheetErrors']),
+      sheetRefreshTime: serializer.fromJson<DateTime>(json['sheetRefreshTime']),
     );
   }
   @override
@@ -364,6 +397,7 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
       'isActive': serializer.toJson<bool>(isActive),
       'isUserPrimary': serializer.toJson<bool>(isUserPrimary),
       'hasSheetErrors': serializer.toJson<bool>(hasSheetErrors),
+      'sheetRefreshTime': serializer.toJson<DateTime>(sheetRefreshTime),
     };
   }
 
@@ -377,6 +411,7 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
     bool? isActive,
     bool? isUserPrimary,
     bool? hasSheetErrors,
+    DateTime? sheetRefreshTime,
   }) => UserSessionData(
     id: id ?? this.id,
     libraryName: libraryName ?? this.libraryName,
@@ -388,6 +423,7 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
     isActive: isActive ?? this.isActive,
     isUserPrimary: isUserPrimary ?? this.isUserPrimary,
     hasSheetErrors: hasSheetErrors ?? this.hasSheetErrors,
+    sheetRefreshTime: sheetRefreshTime ?? this.sheetRefreshTime,
   );
   UserSessionData copyWithCompanion(SessionsCompanion data) {
     return UserSessionData(
@@ -410,6 +446,10 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
           data.hasSheetErrors.present
               ? data.hasSheetErrors.value
               : this.hasSheetErrors,
+      sheetRefreshTime:
+          data.sheetRefreshTime.present
+              ? data.sheetRefreshTime.value
+              : this.sheetRefreshTime,
     );
   }
 
@@ -424,7 +464,8 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
           ..write('isAdmin: $isAdmin, ')
           ..write('isActive: $isActive, ')
           ..write('isUserPrimary: $isUserPrimary, ')
-          ..write('hasSheetErrors: $hasSheetErrors')
+          ..write('hasSheetErrors: $hasSheetErrors, ')
+          ..write('sheetRefreshTime: $sheetRefreshTime')
           ..write(')'))
         .toString();
   }
@@ -440,6 +481,7 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
     isActive,
     isUserPrimary,
     hasSheetErrors,
+    sheetRefreshTime,
   );
   @override
   bool operator ==(Object other) =>
@@ -453,7 +495,8 @@ class UserSessionData extends DataClass implements Insertable<UserSessionData> {
           other.isAdmin == this.isAdmin &&
           other.isActive == this.isActive &&
           other.isUserPrimary == this.isUserPrimary &&
-          other.hasSheetErrors == this.hasSheetErrors);
+          other.hasSheetErrors == this.hasSheetErrors &&
+          other.sheetRefreshTime == this.sheetRefreshTime);
 }
 
 class SessionsCompanion extends UpdateCompanion<UserSessionData> {
@@ -466,6 +509,7 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
   final Value<bool> isActive;
   final Value<bool> isUserPrimary;
   final Value<bool> hasSheetErrors;
+  final Value<DateTime> sheetRefreshTime;
   const SessionsCompanion({
     this.id = const Value.absent(),
     this.libraryName = const Value.absent(),
@@ -476,6 +520,7 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
     this.isActive = const Value.absent(),
     this.isUserPrimary = const Value.absent(),
     this.hasSheetErrors = const Value.absent(),
+    this.sheetRefreshTime = const Value.absent(),
   });
   SessionsCompanion.insert({
     this.id = const Value.absent(),
@@ -487,6 +532,7 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
     this.isActive = const Value.absent(),
     this.isUserPrimary = const Value.absent(),
     this.hasSheetErrors = const Value.absent(),
+    this.sheetRefreshTime = const Value.absent(),
   }) : libraryName = Value(libraryName),
        userId = Value(userId),
        sheetId = Value(sheetId);
@@ -500,6 +546,7 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
     Expression<bool>? isActive,
     Expression<bool>? isUserPrimary,
     Expression<bool>? hasSheetErrors,
+    Expression<DateTime>? sheetRefreshTime,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -511,6 +558,7 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
       if (isActive != null) 'is_active': isActive,
       if (isUserPrimary != null) 'is_user_primary': isUserPrimary,
       if (hasSheetErrors != null) 'has_sheet_errors': hasSheetErrors,
+      if (sheetRefreshTime != null) 'sheet_refresh_time': sheetRefreshTime,
     });
   }
 
@@ -524,6 +572,7 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
     Value<bool>? isActive,
     Value<bool>? isUserPrimary,
     Value<bool>? hasSheetErrors,
+    Value<DateTime>? sheetRefreshTime,
   }) {
     return SessionsCompanion(
       id: id ?? this.id,
@@ -535,6 +584,7 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
       isActive: isActive ?? this.isActive,
       isUserPrimary: isUserPrimary ?? this.isUserPrimary,
       hasSheetErrors: hasSheetErrors ?? this.hasSheetErrors,
+      sheetRefreshTime: sheetRefreshTime ?? this.sheetRefreshTime,
     );
   }
 
@@ -568,6 +618,9 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
     if (hasSheetErrors.present) {
       map['has_sheet_errors'] = Variable<bool>(hasSheetErrors.value);
     }
+    if (sheetRefreshTime.present) {
+      map['sheet_refresh_time'] = Variable<DateTime>(sheetRefreshTime.value);
+    }
     return map;
   }
 
@@ -582,7 +635,8 @@ class SessionsCompanion extends UpdateCompanion<UserSessionData> {
           ..write('isAdmin: $isAdmin, ')
           ..write('isActive: $isActive, ')
           ..write('isUserPrimary: $isUserPrimary, ')
-          ..write('hasSheetErrors: $hasSheetErrors')
+          ..write('hasSheetErrors: $hasSheetErrors, ')
+          ..write('sheetRefreshTime: $sheetRefreshTime')
           ..write(')'))
         .toString();
   }
@@ -2174,6 +2228,7 @@ typedef $$SessionsTableCreateCompanionBuilder =
       Value<bool> isActive,
       Value<bool> isUserPrimary,
       Value<bool> hasSheetErrors,
+      Value<DateTime> sheetRefreshTime,
     });
 typedef $$SessionsTableUpdateCompanionBuilder =
     SessionsCompanion Function({
@@ -2186,6 +2241,7 @@ typedef $$SessionsTableUpdateCompanionBuilder =
       Value<bool> isActive,
       Value<bool> isUserPrimary,
       Value<bool> hasSheetErrors,
+      Value<DateTime> sheetRefreshTime,
     });
 
 class $$SessionsTableFilterComposer
@@ -2239,6 +2295,11 @@ class $$SessionsTableFilterComposer
 
   ColumnFilters<bool> get hasSheetErrors => $composableBuilder(
     column: $table.hasSheetErrors,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get sheetRefreshTime => $composableBuilder(
+    column: $table.sheetRefreshTime,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2296,6 +2357,11 @@ class $$SessionsTableOrderingComposer
     column: $table.hasSheetErrors,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get sheetRefreshTime => $composableBuilder(
+    column: $table.sheetRefreshTime,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SessionsTableAnnotationComposer
@@ -2341,6 +2407,11 @@ class $$SessionsTableAnnotationComposer
     column: $table.hasSheetErrors,
     builder: (column) => column,
   );
+
+  GeneratedColumn<DateTime> get sheetRefreshTime => $composableBuilder(
+    column: $table.sheetRefreshTime,
+    builder: (column) => column,
+  );
 }
 
 class $$SessionsTableTableManager
@@ -2383,6 +2454,7 @@ class $$SessionsTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> isUserPrimary = const Value.absent(),
                 Value<bool> hasSheetErrors = const Value.absent(),
+                Value<DateTime> sheetRefreshTime = const Value.absent(),
               }) => SessionsCompanion(
                 id: id,
                 libraryName: libraryName,
@@ -2393,6 +2465,7 @@ class $$SessionsTableTableManager
                 isActive: isActive,
                 isUserPrimary: isUserPrimary,
                 hasSheetErrors: hasSheetErrors,
+                sheetRefreshTime: sheetRefreshTime,
               ),
           createCompanionCallback:
               ({
@@ -2405,6 +2478,7 @@ class $$SessionsTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> isUserPrimary = const Value.absent(),
                 Value<bool> hasSheetErrors = const Value.absent(),
+                Value<DateTime> sheetRefreshTime = const Value.absent(),
               }) => SessionsCompanion.insert(
                 id: id,
                 libraryName: libraryName,
@@ -2415,6 +2489,7 @@ class $$SessionsTableTableManager
                 isActive: isActive,
                 isUserPrimary: isUserPrimary,
                 hasSheetErrors: hasSheetErrors,
+                sheetRefreshTime: sheetRefreshTime,
               ),
           withReferenceMapper:
               (p0) =>

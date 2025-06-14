@@ -12,7 +12,6 @@ import 'package:library_app/providers/database_provider.dart';
 import 'package:library_app/providers/scores_provider.dart';
 import 'package:library_app/providers/session_provider.dart';
 import 'package:library_app/screens/create/add_subcategory_button.dart';
-import 'package:library_app/screens/home/home.dart';
 import 'package:library_app/shared/app_drawer.dart';
 import 'package:library_app/shared/global_snackbar.dart';
 import 'package:library_app/shared/gradient_button.dart';
@@ -124,6 +123,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
   }
 
   void _handleSubmit() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     final catalogError = await _catalogValidiator(_catalogNumber);
     if (!mounted) return;
 
@@ -140,10 +140,6 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
 
     final isValid = _validateAndSaveForm();
     if (!isValid) return;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      FocusScope.of(context).unfocus();
-    });
 
     showDialog(
       context: context,
@@ -183,6 +179,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
             _selectedSubcategories.clear();
             _selectedCategory = null;
             _selectedStatus = Status.inLibrary;
+            _subcategories.clear();
 
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _scrollController.animateTo(
@@ -192,12 +189,6 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
               );
               FocusScope.of(context).unfocus();
               Navigator.pop(context);
-              // ScaffoldMessenger.of(context).showSnackBar(
-              //   SnackBar(
-              //     content: Text(message),
-              //     duration: Duration(seconds: 2),
-              //   ),
-              // );
             });
           },
           child: Text(
@@ -266,23 +257,8 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
 
   Future<void> _addScoreToSheet(ScoreWithDetails score) async {
     final scoreToSheet = SheetData(score: score);
-    final startInfo = await ref.read(appInitializerProvider.future);
-    final authHeaders = await startInfo.googleAccount!.authHeaders;
-    final db = ref.read(databaseProvider);
-
-    final session = await ref.read(sessionProvider.future);
-    if (session == null) {
-      return;
-    }
-    final sheetId = session.sheetId;
-
-    final importer = GoogleSheetHelper(
-      sheetId: sheetId,
-      authHeaders: authHeaders,
-      db: db,
-    );
-
-    await importer.insertOrUpdate(rowData: scoreToSheet);
+    final helper = await GoogleSheetHelper.fromRef(ref);
+    await helper.insertOrUpdate(rowData: scoreToSheet);
   }
 
   Future<void> _handleScoreUploadAndNotify({
@@ -303,6 +279,8 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
     GlobalSnackbar.show(
       message: message,
       isError: failed,
+      duration:
+          failed ? const Duration(seconds: 6) : const Duration(seconds: 3),
       onRetry: () async {
         try {
           await ref
@@ -318,6 +296,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
           GlobalSnackbar.show(
             message: "Retry failed: ${e.toString()}",
             isError: true,
+            duration: const Duration(seconds: 6),
             onRetry: () {
               _handleScoreUploadAndNotify(ref: ref, newScore: newScore);
             },

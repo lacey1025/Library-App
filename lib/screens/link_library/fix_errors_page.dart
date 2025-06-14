@@ -59,25 +59,17 @@ class _FixErrorsPageState extends ConsumerState<FixErrorsPage> {
         missingHeaders.clear();
       });
     }
-    final startInfo = await ref.read(appInitializerProvider.future);
-    final authHeaders = await startInfo.googleAccount!.authHeaders;
-    final db = ref.read(databaseProvider);
 
     final session = await ref.read(sessionProvider.future);
     if (session == null) {
       return;
     }
-    final sheetId = session.sheetId;
-
-    final importer = GoogleSheetHelper(
-      sheetId: sheetId,
-      authHeaders: authHeaders,
-      db: db,
-    );
+    final importer = await GoogleSheetHelper.fromRef(ref);
 
     final List<ImportError> newErrors = [];
     try {
       newErrors.addAll(await importer.importScores());
+      await ref.read(sessionProvider.notifier).updateSheetRefreshTime();
     } on MissingHeaderException catch (e) {
       setState(() {
         missingHeaders.addAll(e.missingHeaders);
@@ -102,7 +94,9 @@ class _FixErrorsPageState extends ConsumerState<FixErrorsPage> {
         context,
       ).pushReplacement(MaterialPageRoute(builder: (_) => const Home()));
     } else {
-      ref.read(sessionProvider.notifier).updateHasErrors(session.id, true);
+      await ref
+          .read(sessionProvider.notifier)
+          .updateHasErrors(session.id, true);
       setState(() {
         errors.clear();
         errors.addAll(newErrors);
@@ -143,7 +137,7 @@ class _FixErrorsPageState extends ConsumerState<FixErrorsPage> {
         padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
         child:
             _isRetrying
-                ? Center(child: FlashingLogo())
+                ? FlashingLogo()
                 : SafeArea(
                   child: Column(
                     children: [
