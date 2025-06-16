@@ -13,12 +13,10 @@ import 'package:library_app/screens/login/login_screen.dart';
 import 'package:library_app/screens/view_score/bottom_button_section.dart';
 import 'package:library_app/screens/view_score/score_field.dart';
 import 'package:library_app/screens/view_score/show_dialog.dart';
-import 'package:library_app/screens/view_score/submit_helpers.dart';
 import 'package:library_app/screens/view_score/view_edit_field.dart';
 import 'package:library_app/shared/app_drawer.dart';
 import 'package:library_app/shared/appbar.dart';
 import 'package:library_app/shared/global_snackbar.dart';
-import 'package:library_app/shared/gradient_button.dart';
 import 'package:library_app/utils/exceptions.dart';
 import 'package:library_app/utils/google_sheet_importer.dart';
 

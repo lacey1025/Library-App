@@ -91,6 +91,7 @@ ThemeData primaryTheme = ThemeData(
     filled: true,
     fillColor: Colors.grey[800],
     labelStyle: TextStyle(color: Colors.white),
+    hintStyle: TextStyle(color: Colors.white),
     errorStyle: TextStyle(color: Colors.red[600]),
     errorBorder: UnderlineInputBorder(
       borderSide: BorderSide(color: const Color.fromRGBO(229, 57, 53, 1)),

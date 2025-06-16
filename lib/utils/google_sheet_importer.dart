@@ -18,8 +18,11 @@ class GoogleSheetHelper {
   final Map<String, String> authHeaders;
   final LibraryDatabase db;
 
-  final List errorList = [];
   HeaderHelper? _headerHelper;
+  final _validator = RowValidator();
+  final List<ImportError> _allErrors = [];
+  final _rows = [];
+  final _validRows = <List>[];
 
   GoogleSheetHelper({
     required this.sheetId,
@@ -50,21 +53,120 @@ class GoogleSheetHelper {
   }
 
   Future<List<ImportError>> importScores() async {
-    final validator = RowValidator();
-    final allErrors = <ImportError>[];
-    final validRows = <List>[];
+    final headersOK = await _importAndSetupHeaders();
+    if (!headersOK) return _allErrors;
+    final result = await _validateAndParse();
+    Set<String> composersToInsert;
+    Map<String, String> categoriesToInsert;
 
+    if (result != null) {
+      composersToInsert = result.composers;
+      categoriesToInsert = result.categories;
+    } else {
+      _allErrors.add(
+        ImportError(rowIndex: -1, message: "Failed to get headers."),
+      );
+      return _allErrors;
+    }
+
+    await db.transaction(() async {
+      await db.clearAllTables();
+      final compCatResult = await _insertComposersCategories(
+        composersToInsert,
+        categoriesToInsert,
+      );
+      final composerMap = compCatResult.composerMap;
+      final categoryMap = compCatResult.categoryMap;
+
+      final scoresResult = await _setupScores(composerMap, categoryMap);
+      await _addScoresSubcat(
+        scoresResult.scores,
+        scoresResult.subCatSet,
+        scoresResult.scoreSubCatLinks,
+      );
+    });
+    await _highlightResults();
+
+    return _allErrors;
+  }
+
+  Future<void> insertOrUpdate({
+    required SheetData rowData,
+    String? oldCatNum,
+  }) async {
+    final catalogNumber =
+        (oldCatNum == null) ? rowData.sheetData["catalog number"] : oldCatNum;
+
+    if (catalogNumber == null || catalogNumber.isEmpty) {
+      throw AddToSheetException("Could not get catalog number from sheet data");
+    }
+
+    final rowIndex = await _findRowIdxByCatalogNum(catalogNumber);
+
+    final valuesToUpload = _headerHelper!.orderByHeaderOrder(
+      sheetData: rowData,
+    );
+
+    if (valuesToUpload == null) {
+      throw AddToSheetException("Failed to match score to sheet");
+    }
+
+    if (rowIndex != null) {
+      await _updateRow(rowIndex: rowIndex, rowData: valuesToUpload);
+    } else {
+      await _appendRow(valuesToUpload);
+    }
+  }
+
+  Future<void> deleteRow({required String catalogNumber}) async {
+    final rowIndex = await _findRowIdxByCatalogNum(catalogNumber);
+    final tabId = await getTabId(authHeaders, sheetId);
+    if (rowIndex == null) {
+      throw AddToSheetException("Score has already been deleted.");
+    }
+    final url = Uri.parse(
+      'https://sheets.googleapis.com/v4/spreadsheets/$sheetId:batchUpdate',
+    );
+    final body = {
+      "requests": [
+        {
+          "deleteDimension": {
+            "range": {
+              "sheetId": tabId,
+              "dimension": "ROWS",
+              "startIndex": rowIndex - 1,
+              "endIndex": rowIndex,
+            },
+          },
+        },
+      ],
+    };
+
+    final response = await http.post(
+      url,
+      headers: authHeaders,
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode != 200) {
+      throw AddToSheetException("Failed to delete row. Please try again");
+    }
+  }
+
+  Future<bool> _importAndSetupHeaders() async {
     await clearSheetFormatting(authHeaders, sheetId);
     final rows = await _getSheetRows();
 
     if (rows == null) {
-      return [
+      _allErrors.add(
         ImportError(rowIndex: -1, message: "Sheet is empty or missing data."),
-      ];
+      );
+      return false;
     }
-
+    _rows.addAll(rows);
     final headerRow = rows[0];
-    final header = HeaderHelper(headerRow);
+    _headerHelper = HeaderHelper(headerRow);
+    if (_headerHelper == null) return false;
     final requiredHeaders = [
       'title',
       'composer',
@@ -78,47 +180,58 @@ class GoogleSheetHelper {
       'change time',
     ];
 
-    if (rows.isEmpty) {
-      final addHeadersOK = await header.createInitialHeaders(
+    if (_rows.isEmpty) {
+      final addHeadersOK = await _headerHelper!.createInitialHeaders(
         sheetId: sheetId,
         authHeaders: authHeaders,
         initialHeaders: requiredHeaders,
       );
       if (addHeadersOK) {
-        return [];
+        return true;
       } else {
-        return [
+        _allErrors.add(
           ImportError(
             rowIndex: -1,
             message: "Failed to add headers to empty sheet.",
           ),
-        ];
+        );
+        return false;
       }
     }
-    header.requireHeaders(requiredHeaders);
+    _headerHelper!.requireHeaders(requiredHeaders);
 
-    if (rows.length < 2) return allErrors;
+    if (rows.length < 2) return false;
+    return true;
+  }
 
-    final bodyRows = rows.sublist(1);
+  Future<({Set<String> composers, Map<String, String> categories})?>
+  _validateAndParse() async {
+    final bodyRows = _rows.sublist(1);
     final composersToInsert = <String>{};
     final categoriesToInsert = <String, String>{};
+
+    if (_headerHelper == null) return null;
 
     for (int i = 0; i < bodyRows.length; i++) {
       final row = bodyRows[i];
       final rowIndex = i + 2;
 
-      if (header.isRowEmpty(row, ['title', 'composer', 'catalog number'])) {
+      if (_headerHelper!.isRowEmpty(row, [
+        'title',
+        'composer',
+        'catalog number',
+      ])) {
         continue;
       }
 
-      final rowErrors = validator.validateRow(row, rowIndex, header);
-      allErrors.addAll(rowErrors);
+      final rowErrors = _validator.validateRow(row, rowIndex, _headerHelper!);
+      _allErrors.addAll(rowErrors);
 
       if (rowErrors.isEmpty) {
-        validRows.add(row);
-        final composerName = header.getCell(row, 'composer');
-        final categoryName = header.getCell(row, 'category');
-        final catalogNumber = header.getCell(row, 'catalog number');
+        _validRows.add(row);
+        final composerName = _headerHelper!.getCell(row, 'composer');
+        final categoryName = _headerHelper!.getCell(row, 'category');
+        final catalogNumber = _headerHelper!.getCell(row, 'catalog number');
 
         if (composerName.cell.isNotEmpty) {
           composersToInsert.add(composerName.cell);
@@ -132,155 +245,185 @@ class GoogleSheetHelper {
         }
       }
     }
+    return (composers: composersToInsert, categories: categoriesToInsert);
+  }
 
-    await db.transaction(() async {
-      await db.clearAllTables();
-      final composerList = await db.scoresDao.bulkInsertComposers(
-        composersToInsert,
-      );
-      final categoryList = await db.categoryDao.bulkInsertCategories(
-        categoriesToInsert,
-      );
-      final composerMap = {for (var c in composerList) c.name: c.id};
-      final categoryMap = {for (var c in categoryList) c.name: c.id};
+  Future<({Map<String, int> composerMap, Map<String, int> categoryMap})>
+  _insertComposersCategories(
+    Set<String> composersToInsert,
+    Map<String, String> categoriesToInsert,
+  ) async {
+    final composerList = await db.scoresDao.bulkInsertComposers(
+      composersToInsert,
+    );
+    final categoryList = await db.categoryDao.bulkInsertCategories(
+      categoriesToInsert,
+    );
+    final composerMap = {for (var c in composerList) c.name: c.id};
+    final categoryMap = {for (var c in categoryList) c.name: c.id};
+    return (composerMap: composerMap, categoryMap: categoryMap);
+  }
 
-      final scores = <ScoresCompanion>[];
-      final subCatSet = <(String name, int categoryId)>{};
-      final scoreSubCatLinks = <(String catalogNumber, String subCatName)>{};
+  Future<
+    ({
+      Set<(String, int)> subCatSet,
+      List<ScoresCompanion> scores,
+      Set<(String, String)> scoreSubCatLinks,
+    })
+  >
+  _setupScores(
+    Map<String, int> composerMap,
+    Map<String, int> categoryMap,
+  ) async {
+    final scores = <ScoresCompanion>[];
+    final subCatSet = <(String name, int categoryId)>{};
+    final scoreSubCatLinks = <(String catalogNumber, String subCatName)>{};
 
-      for (int i = 0; i < validRows.length; i++) {
-        final row = validRows[i];
-        final title = header.getCell(row, 'title');
-        final composerName = header.getCell(row, 'composer');
-        final arranger = header.getCell(row, 'arranger');
-        final catalogNumber = header.getCell(row, 'catalog number');
-        final notes = header.getCell(row, 'notes');
-        final categoryName = header.getCell(row, 'category');
-        final subCats = header.getCell(row, 'subcategories');
-        final status = header.getCell(row, 'status');
-        final link = header.getCell(row, 'link');
-        final changeTimeCell = header.getCell(row, 'change time');
-        final changeTime =
-            (changeTimeCell.cell.isNotEmpty)
-                ? DateTime.tryParse(changeTimeCell.cell) ?? DateTime.now()
-                : DateTime.now();
+    for (int i = 0; i < _validRows.length; i++) {
+      final row = _validRows[i];
+      final title = _headerHelper!.getCell(row, 'title');
+      final composerName = _headerHelper!.getCell(row, 'composer');
+      final arranger = _headerHelper!.getCell(row, 'arranger');
+      final catalogNumber = _headerHelper!.getCell(row, 'catalog number');
+      final notes = _headerHelper!.getCell(row, 'notes');
+      final categoryName = _headerHelper!.getCell(row, 'category');
+      final subCats = _headerHelper!.getCell(row, 'subcategories');
+      final status = _headerHelper!.getCell(row, 'status');
+      final link = _headerHelper!.getCell(row, 'link');
+      final changeTimeCell = _headerHelper!.getCell(row, 'change time');
+      final changeTime =
+          (changeTimeCell.cell.isNotEmpty)
+              ? DateTime.tryParse(changeTimeCell.cell) ?? DateTime.now()
+              : DateTime.now();
 
-        final composerId = composerMap[composerName.cell];
-        final categoryId = categoryMap[categoryName.cell];
+      final composerId = composerMap[composerName.cell];
+      final categoryId = categoryMap[categoryName.cell];
 
-        if (composerId == null) {
-          allErrors.add(
-            ImportError(
-              rowIndex: -1,
-              cellIndex: -1,
-              message:
-                  "Could not link composer ${composerName.cell} to ${title.cell}. Please try again. If this keeps happening please report the issue",
-            ),
-          );
-          continue;
-        }
-
-        if (categoryId == null) {
-          allErrors.add(
-            ImportError(
-              rowIndex: -1,
-              cellIndex: null,
-              message:
-                  "Could not link category ${categoryName.cell} to ${title.cell}. Please try again. If this keeps happening please report the issue",
-            ),
-          );
-          continue;
-        }
-
-        final score = ScoresCompanion(
-          title: Value(title.cell),
-          composerId: Value(composerId),
-          arranger: Value(arranger.cell),
-          catalogNumber: Value(catalogNumber.cell),
-          notes: Value(notes.cell),
-          categoryId: Value(categoryId),
-          status: Value(status.cell),
-          link: Value(link.cell),
-          changeTime: Value(changeTime),
+      if (composerId == null) {
+        _allErrors.add(
+          ImportError(
+            rowIndex: -1,
+            cellIndex: -1,
+            message:
+                "Could not link composer ${composerName.cell} to ${title.cell}. Please try again. If this keeps happening please report the issue",
+          ),
         );
-
-        scores.add(score);
-
-        if (subCats.cell.isNotEmpty) {
-          for (final s in subCats.cell.split(',')) {
-            final trimmed = s.trim();
-            subCatSet.add((trimmed, categoryId));
-            scoreSubCatLinks.add((catalogNumber.cell.trim(), trimmed));
-          }
-        }
+        continue;
       }
 
-      final subcategoriesToInsert =
-          subCatSet
-              .map(
-                (e) => SubcategoriesCompanion(
-                  name: Value(e.$1),
-                  categoryId: Value(e.$2),
-                ),
-              )
-              .toList();
+      if (categoryId == null) {
+        _allErrors.add(
+          ImportError(
+            rowIndex: -1,
+            cellIndex: null,
+            message:
+                "Could not link category ${categoryName.cell} to ${title.cell}. Please try again. If this keeps happening please report the issue",
+          ),
+        );
+        continue;
+      }
 
-      final subCategoryList = await db.categoryDao.bulkInserSubcategories(
-        subcategoriesToInsert,
+      final score = ScoresCompanion(
+        title: Value(title.cell),
+        composerId: Value(composerId),
+        arranger: Value(arranger.cell),
+        catalogNumber: Value(catalogNumber.cell.toUpperCase().trim()),
+        notes: Value(notes.cell),
+        categoryId: Value(categoryId),
+        status: Value(status.cell.toLowerCase().trim()),
+        link: Value(link.cell),
+        changeTime: Value(changeTime),
       );
-      final insertedScores = await db.scoresDao.insertScoresBatch(scores);
-      final subCatMap = {
-        for (var sub in subCategoryList) (sub.name, sub.categoryId): sub.id,
-      };
 
-      final scoreMap = {
-        for (var score in insertedScores)
-          score.catalogNumber.trim(): (score.id, score.categoryId),
-      };
+      scores.add(score);
 
-      final links =
-          scoreSubCatLinks
-              .map((pair) {
-                final catalogNumber = pair.$1.trim();
-                final subCatName = pair.$2.trim();
-                final entry = scoreMap[catalogNumber];
-                if (entry == null) {
-                  allErrors.add(
-                    ImportError(
-                      rowIndex: -1,
-                      message:
-                          "Could not find score for $catalogNumber. Please try again. If this keeps happening please report the issue",
-                    ),
-                  );
-                  return null;
-                }
-                final (scoreId, categoryId) = entry;
-                final subCatId = subCatMap[(subCatName, categoryId)];
+      if (subCats.cell.isNotEmpty) {
+        for (final s in subCats.cell.split(',')) {
+          final trimmed = s.trim();
+          subCatSet.add((trimmed, categoryId));
+          scoreSubCatLinks.add((catalogNumber.cell.trim(), trimmed));
+        }
+      }
+    }
+    return (
+      scores: scores,
+      subCatSet: subCatSet,
+      scoreSubCatLinks: scoreSubCatLinks,
+    );
+  }
 
-                if (subCatId == null) {
-                  allErrors.add(
-                    ImportError(
-                      rowIndex: -1,
-                      message:
-                          "Could not find subcategory '$subCatName'. Please try again. If this keeps happening please report the issue.",
-                    ),
-                  );
-                  return null;
-                }
+  Future<void> _addScoresSubcat(
+    List<ScoresCompanion> scores,
+    Set<(String, int)> subCatSet,
+    Set<(String, String)> scoreSubCatLinks,
+  ) async {
+    final subcategoriesToInsert =
+        subCatSet
+            .map(
+              (e) => SubcategoriesCompanion(
+                name: Value(e.$1),
+                categoryId: Value(e.$2),
+              ),
+            )
+            .toList();
 
-                return ScoreSubcategoriesCompanion(
-                  scoreId: Value(scoreId),
-                  subcategoryId: Value(subCatId),
+    final subCategoryList = await db.categoryDao.bulkInserSubcategories(
+      subcategoriesToInsert,
+    );
+    final insertedScores = await db.scoresDao.insertScoresBatch(scores);
+    final subCatMap = {
+      for (var sub in subCategoryList) (sub.name, sub.categoryId): sub.id,
+    };
+
+    final scoreMap = {
+      for (var score in insertedScores)
+        score.catalogNumber.trim(): (score.id, score.categoryId),
+    };
+
+    final links =
+        scoreSubCatLinks
+            .map((pair) {
+              final catalogNumber = pair.$1.trim();
+              final subCatName = pair.$2.trim();
+              final entry = scoreMap[catalogNumber];
+              if (entry == null) {
+                _allErrors.add(
+                  ImportError(
+                    rowIndex: -1,
+                    message:
+                        "Could not find score for $catalogNumber. Please try again. If this keeps happening please report the issue",
+                  ),
                 );
-              })
-              .whereType<ScoreSubcategoriesCompanion>()
-              .toList();
+                return null;
+              }
+              final (scoreId, categoryId) = entry;
+              final subCatId = subCatMap[(subCatName, categoryId)];
 
-      await db.scoreSubcategoriesDao.bulkInsertScoreSubcategory(links);
-    });
+              if (subCatId == null) {
+                _allErrors.add(
+                  ImportError(
+                    rowIndex: -1,
+                    message:
+                        "Could not find subcategory '$subCatName'. Please try again. If this keeps happening please report the issue.",
+                  ),
+                );
+                return null;
+              }
 
+              return ScoreSubcategoriesCompanion(
+                scoreId: Value(scoreId),
+                subcategoryId: Value(subCatId),
+              );
+            })
+            .whereType<ScoreSubcategoriesCompanion>()
+            .toList();
+
+    await db.scoreSubcategoriesDao.bulkInsertScoreSubcategory(links);
+  }
+
+  Future<void> _highlightResults() async {
     final highlightErrors =
-        allErrors
+        _allErrors
             .where((e) => (e.cellIndex != null && e.cellIndex! >= 0))
             .toList();
     if (highlightErrors.isNotEmpty) {
@@ -292,11 +435,8 @@ class GoogleSheetHelper {
         );
       } catch (e) {
         debugPrint("Highlight exception occured: $e");
-        return allErrors;
       }
     }
-
-    return allErrors;
   }
 
   Future<List<dynamic>?> _getSheetRows() async {
@@ -374,71 +514,6 @@ class GoogleSheetHelper {
 
     if (response.statusCode != 200) {
       throw AddToSheetException('Failed to insert row');
-    }
-  }
-
-  Future<void> deleteRow({required String catalogNumber}) async {
-    final rowIndex = await _findRowIdxByCatalogNum(catalogNumber);
-    final tabId = await getTabId(authHeaders, sheetId);
-    if (rowIndex == null) {
-      throw AddToSheetException("Score has already been deleted.");
-    }
-    final url = Uri.parse(
-      'https://sheets.googleapis.com/v4/spreadsheets/$sheetId:batchUpdate',
-    );
-    final body = {
-      "requests": [
-        {
-          "deleteDimension": {
-            "range": {
-              "sheetId": tabId,
-              "dimension": "ROWS",
-              "startIndex": rowIndex - 1,
-              "endIndex": rowIndex,
-            },
-          },
-        },
-      ],
-    };
-
-    final response = await http.post(
-      url,
-      headers: authHeaders,
-      body: jsonEncode(body),
-    );
-
-    if (response.statusCode != 200) {
-      print("SHEET ID: $sheetId");
-      print(response.body);
-      throw AddToSheetException("Failed to delete row. Please try again");
-    }
-  }
-
-  Future<void> insertOrUpdate({
-    required SheetData rowData,
-    String? oldCatNum,
-  }) async {
-    final catalogNumber =
-        (oldCatNum == null) ? rowData.sheetData["catalog number"] : oldCatNum;
-
-    if (catalogNumber == null || catalogNumber.isEmpty) {
-      throw AddToSheetException("Could not get catalog number from sheet data");
-    }
-
-    final rowIndex = await _findRowIdxByCatalogNum(catalogNumber);
-
-    final valuesToUpload = _headerHelper!.orderByHeaderOrder(
-      sheetData: rowData,
-    );
-
-    if (valuesToUpload == null) {
-      throw AddToSheetException("Failed to match score to sheet");
-    }
-
-    if (rowIndex != null) {
-      await _updateRow(rowIndex: rowIndex, rowData: valuesToUpload);
-    } else {
-      await _appendRow(valuesToUpload);
     }
   }
 }

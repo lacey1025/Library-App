@@ -43,6 +43,7 @@ dependencies:
   http: ^1.3.0
   url_launcher: ^6.2.5
   app_links: ^3.4.1 
+  fuzzy: ^0.5.1
 
 dev_dependencies:
   flutter_test:
@@ -72,6 +73,7 @@ flutter:
   assets:
     - assets/img/cute_redbull.png
     - assets/img/redbull.png
+    - assets/img/sad_redbull.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

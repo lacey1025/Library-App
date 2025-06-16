@@ -182,7 +182,7 @@ class ScoresDao extends DatabaseAccessor<LibraryDatabase>
         'change_time',
       ];
 
-      buffer.write('INSERT INTO scores (');
+      buffer.write('INSERT OR IGNORE INTO scores (');
       buffer.write(columns.join(', '));
       buffer.write(') VALUES ');
 
