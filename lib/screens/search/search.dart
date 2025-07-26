@@ -119,15 +119,9 @@ class _SearchState extends ConsumerState<Search> with TickerProviderStateMixin {
             data: (scores) {
               return Column(
                 children: [
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    child: _buildSearchOptions(categories),
-                  ),
-                  const SizedBox(height: 5),
                   Expanded(
                     child: Padding(
-                      padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, 0),
                       child:
                           (results.isNotEmpty)
                               ? ListView.builder(
@@ -144,6 +138,11 @@ class _SearchState extends ConsumerState<Search> with TickerProviderStateMixin {
                               : _noItems(),
                     ),
                   ),
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: _buildSearchOptions(categories),
+                  ),
                 ],
               );
             },
@@ -158,83 +157,87 @@ class _SearchState extends ConsumerState<Search> with TickerProviderStateMixin {
   }
 
   Widget _buildSearchOptions(List<CategoryWithDetails> categories) {
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color.fromARGB(255, 37, 36, 37),
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: const [BoxShadow(blurRadius: 4, color: Colors.black38)],
-        ),
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-        child: Column(
-          children: [
-            if (_isExpanded) ...[
-              if (!_isAdvancedSearch) _buildAllFieldsInput(),
-              if (_isAdvancedSearch) ...[
-                _buildTextField("Title", _titleController),
-                _buildTextField("Composer", _composerController),
-                _buildTextField("Arranger", _arrangerController),
-                _buildTextField("Catalog Number", _catalogNumController),
-                _buildDropdown<CategoryWithDetails>(
-                  "Category",
-                  categories.map((entry) {
-                    return DropdownMenuItem<CategoryWithDetails>(
-                      value: entry,
-                      child: Text(
-                        entry.category.name,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    );
-                  }).toList(),
-                  _selectedCategory,
-                  (value) {
-                    setState(() {
-                      _selectedCategory = value;
-                      _selectedSubcategory = null;
-                    });
-                    _updateFilters();
-                  },
+    return GestureDetector(
+      onVerticalDragUpdate: (details) {
+        if (details.delta.dy < -5) {
+          setState(() => _isExpanded = true);
+        } else if (details.delta.dy > 5) {
+          setState(() => _isExpanded = false);
+        }
+      },
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color.fromARGB(255, 37, 36, 37),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: const [BoxShadow(blurRadius: 4, color: Colors.black38)],
+          ),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+          child: Column(
+            children: [
+              Align(
+                alignment: Alignment.center,
+                child: Container(
+                  width: 30,
+                  height: 4,
+                  margin: EdgeInsets.fromLTRB(0, 8, 0, 16),
+                  color: Colors.grey,
                 ),
-                if (_selectedCategory?.subcategories?.isNotEmpty ?? false)
-                  _buildDropdown<String>(
-                    "Subcategory",
-                    _selectedCategory!.subcategories!.map((entry) {
-                      return DropdownMenuItem<String>(
-                        value: entry.name,
+              ),
+              if (_isExpanded) ...[
+                if (!_isAdvancedSearch) _buildAllFieldsInput(),
+                if (_isAdvancedSearch) ...[
+                  _buildTextField("Title", _titleController),
+                  _buildTextField("Composer", _composerController),
+                  _buildTextField("Arranger", _arrangerController),
+                  _buildTextField("Catalog Number", _catalogNumController),
+                  _buildDropdown<CategoryWithDetails>(
+                    "Category",
+                    categories.map((entry) {
+                      return DropdownMenuItem<CategoryWithDetails>(
+                        value: entry,
                         child: Text(
-                          entry.name,
+                          entry.category.name,
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       );
                     }).toList(),
-                    _selectedSubcategory,
+                    _selectedCategory,
                     (value) {
-                      setState(() => _selectedSubcategory = value);
+                      setState(() {
+                        _selectedCategory = value;
+                        _selectedSubcategory = null;
+                      });
                       _updateFilters();
                     },
                   ),
+                  if (_selectedCategory?.subcategories?.isNotEmpty ?? false)
+                    _buildDropdown<String>(
+                      "Subcategory",
+                      _selectedCategory!.subcategories!.map((entry) {
+                        return DropdownMenuItem<String>(
+                          value: entry.name,
+                          child: Text(
+                            entry.name,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        );
+                      }).toList(),
+                      _selectedSubcategory,
+                      (value) {
+                        setState(() => _selectedSubcategory = value);
+                        _updateFilters();
+                      },
+                    ),
+                ],
+                const SizedBox(height: 8),
+                _moreSearchButton(),
+                const SizedBox(height: 8),
               ],
-              const SizedBox(height: 8),
-              _moreSearchButton(),
             ],
-
-            Align(
-              alignment: Alignment.center,
-              child: IconButton(
-                icon: Icon(
-                  _isExpanded ? Icons.expand_less : Icons.expand_more,
-                  color: Colors.white,
-                ),
-                onPressed: () {
-                  setState(() {
-                    _isExpanded = !_isExpanded;
-                  });
-                },
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -273,10 +276,6 @@ class _SearchState extends ConsumerState<Search> with TickerProviderStateMixin {
           Text(
             _isAdvancedSearch ? "fewer search options" : "more search options",
             style: const TextStyle(color: Colors.white),
-          ),
-          Icon(
-            _isAdvancedSearch ? Icons.expand_less : Icons.expand_more,
-            color: Colors.white,
           ),
         ],
       ),

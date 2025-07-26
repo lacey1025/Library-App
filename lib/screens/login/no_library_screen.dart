@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:library_app/providers/app_initializer.dart';
 import 'package:library_app/providers/session_provider.dart';
+import 'package:library_app/screens/how_to.dart/tutorial_screen.dart';
 import 'package:library_app/screens/login/create_sheet.dart';
 import 'package:library_app/screens/link_library/link_library.dart';
 import 'package:library_app/screens/login/login_screen.dart';
@@ -64,9 +65,9 @@ class NoLibraryScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
                   GradientButton(
                     onPressed: () {
-                      Navigator.of(
-                        context,
-                      ).push(MaterialPageRoute(builder: (_) => CreateSheet()));
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => TutorialScreen()),
+                      );
                     },
                     text: Text("Create New Library"),
                     icon: Icon(Icons.add),
@@ -78,7 +79,7 @@ class NoLibraryScreen extends ConsumerWidget {
                   GradientButton(
                     onPressed: () {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => LinkLibraryScreen()),
+                        MaterialPageRoute(builder: (_) => TutorialScreen()),
                       );
                     },
                     text: Text("Link My Google Sheets Catalog"),
