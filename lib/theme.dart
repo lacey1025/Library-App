@@ -102,7 +102,17 @@ ThemeData primaryTheme = ThemeData(
   ),
 
   textButtonTheme: TextButtonThemeData(
-    style: TextButton.styleFrom(foregroundColor: Colors.white),
+    style: TextButton.styleFrom(
+      foregroundColor: Colors.white,
+      textStyle: TextStyle(
+        color: Colors.white,
+        fontSize: 16,
+        height: 1.2,
+        fontWeight: FontWeight.w700,
+        fontFamily: "GI",
+        overflow: TextOverflow.ellipsis,
+      ),
+    ),
   ),
   dialogTheme: DialogTheme(
     backgroundColor: Colors.grey[800],

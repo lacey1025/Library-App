@@ -44,6 +44,9 @@ dependencies:
   url_launcher: ^6.2.5
   app_links: ^3.4.1 
   fuzzy: ^0.5.1
+  file_selector: ^1.0.3
+  googleapis: ^13.1.0
+  googleapis_auth: ^1.4.1
 
 dev_dependencies:
   flutter_test:

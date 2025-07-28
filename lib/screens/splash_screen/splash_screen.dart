@@ -74,12 +74,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           Navigator.of(context).pushReplacement(
             PageRouteBuilder(
               pageBuilder: (_, __, ___) => const FixErrorsPage(),
-              transitionDuration: Duration(
-                milliseconds: 400,
-              ), // No transition time
-              reverseTransitionDuration: Duration(
-                milliseconds: 400,
-              ), // No reverse transition either
+              transitionDuration: Duration(milliseconds: 400),
+              reverseTransitionDuration: Duration(milliseconds: 400),
             ),
           );
         }

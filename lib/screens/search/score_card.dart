@@ -32,6 +32,7 @@ class ScoreCard extends StatelessWidget {
                     Text(
                       score.score.title,
                       style: Theme.of(context).textTheme.headlineMedium,
+                      overflow: TextOverflow.visible,
                     ),
                     if (score.composer != null)
                       Text(

@@ -73,10 +73,7 @@ Future<void> clearSheetFormatting(
     "requests": [
       {
         "repeatCell": {
-          "range": {
-            "sheetId":
-                tabId, // You may need to replace this with your actual sheet ID
-          },
+          "range": {"sheetId": tabId},
           "cell": {
             "userEnteredFormat": {"backgroundColor": null, "textFormat": null},
             "note": null,

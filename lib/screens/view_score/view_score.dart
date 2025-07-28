@@ -1,11 +1,13 @@
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:library_app/database/library_database.dart';
 import 'package:library_app/models/category_with_details.dart';
 import 'package:library_app/models/score_with_details.dart';
 import 'package:library_app/models/sheet_data.dart';
 import 'package:library_app/models/status.dart';
+import 'package:library_app/providers/app_initializer.dart';
 import 'package:library_app/providers/categories_provider.dart';
 import 'package:library_app/providers/scores_provider.dart';
 import 'package:library_app/providers/session_provider.dart';
@@ -17,8 +19,10 @@ import 'package:library_app/screens/view_score/view_edit_field.dart';
 import 'package:library_app/shared/app_drawer.dart';
 import 'package:library_app/shared/appbar.dart';
 import 'package:library_app/shared/global_snackbar.dart';
+import 'package:library_app/utils/drive_helper.dart';
 import 'package:library_app/utils/exceptions.dart';
 import 'package:library_app/utils/google_sheet_importer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ViewScore extends ConsumerStatefulWidget {
   const ViewScore(this.scoreId, {super.key});
@@ -38,6 +42,7 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
   String edit = "Edit";
   bool _initialized = false;
   late DateTime _scoreRefreshTime;
+  bool _uploading = false;
 
   @override
   void dispose() {
@@ -126,7 +131,7 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
     );
   }
 
-  void _handleSubmit({
+  Future<void> _handleSubmit({
     required String item,
     required ScoreWithDetails score,
     required UserSessionData? session,
@@ -220,6 +225,29 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
       handleSubmit: () async {
         _handleSubmit(
           item: "Arranger",
+          score: score,
+          session: session,
+          newValue: _controller.text,
+        );
+      },
+    );
+  }
+
+  Future<bool> _isValidLink(String link) async {
+    final uri = Uri.tryParse(link);
+    return uri != null && await canLaunchUrl(uri);
+  }
+
+  void _linkSubmit(ScoreWithDetails score, UserSessionData? session) {
+    _controller.text = score.score.link == null ? '' : score.score.link!;
+    DialogHelper.showTextEditDialog(
+      context: context,
+      controller: _controller,
+      name: "Link",
+      validator: () => null,
+      handleSubmit: () async {
+        _handleSubmit(
+          item: "Link",
           score: score,
           session: session,
           newValue: _controller.text,
@@ -804,12 +832,83 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                       ),
                     ],
                   ),
+
+                  ScoreFieldSection(
+                    children: [
+                      ViewEditField(
+                        title: "Link",
+                        edit: edit,
+                        item:
+                            _uploading
+                                ? Row(
+                                  children: const [
+                                    SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text("Uploading..."),
+                                  ],
+                                )
+                                : (score.score.link != null &&
+                                    score.score.link!.isNotEmpty)
+                                ? score.score.link!
+                                : '(none)',
+                        handleSubmit: () => _linkSubmit(score, session),
+                      ),
+                      SizedBox(height: 8),
+                      Divider(),
+                      (score.score.link != null && score.score.link!.isNotEmpty)
+                          ? Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              TextButton.icon(
+                                icon: const Icon(Icons.open_in_new),
+                                label: const Text('Open'),
+                                onPressed:
+                                    () =>
+                                        launchUrl(Uri.parse(score.score.link!)),
+                              ),
+                              TextButton.icon(
+                                icon: const Icon(Icons.copy),
+                                label: const Text('Copy'),
+                                onPressed: () {
+                                  Clipboard.setData(
+                                    ClipboardData(text: score.score.link!),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Link copied to clipboard'),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          )
+                          : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              TextButton.icon(
+                                icon: const Icon(Icons.upload),
+                                label: const Text('Upload Score From Files'),
+                                onPressed: () async {
+                                  setState(() => _uploading = true);
+                                  await _uploadScoreOnPressed(score, session!);
+                                  setState(() => _uploading = false);
+                                },
+                              ),
+                            ],
+                          ),
+                    ],
+                  ),
                   SizedBox(height: 8),
                 ],
               ),
             ),
           ),
-          // pass the needed callbacks and state
           BottomButtonsSection(
             edit: (edit == "Done"),
             onReset: () async {
@@ -834,6 +933,29 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _uploadScoreOnPressed(
+    ScoreWithDetails score,
+    UserSessionData session,
+  ) async {
+    final file = await DriveHelper.pickPdfFile();
+    if (file == null) return;
+    final account = ref.read(googleSignInProvider);
+    final link = await DriveHelper.uploadPdfToDrive(
+      file,
+      account,
+      session.driveFolderId!,
+      score.category!.name,
+    );
+    if (link == null) return;
+
+    await _handleSubmit(
+      item: "Link",
+      score: score,
+      session: session,
+      newValue: link,
     );
   }
 }
