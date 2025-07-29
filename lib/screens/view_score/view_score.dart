@@ -271,6 +271,7 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
         if (score.category != _selectedCategory) {
           _selectedSubcategories.clear();
           final oldCatalogNumber = score.score.catalogNumber;
+          final oldCategoryName = score.category!.name;
           await ref
               .read(scoresNotifierProvider.notifier)
               .updateScore('category', _selectedCategory!.id, score.score.id);
@@ -287,6 +288,17 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
             newValue: newCatalogNum,
             oldCatNum: oldCatalogNumber,
           );
+
+          if (score.score.link != null && score.score.link!.isNotEmpty) {
+            final account = ref.read(googleSignInProvider);
+            DriveHelper.moveFile(
+              account: account,
+              parentFolderId: session!.driveFolderId!,
+              oldFolderName: oldCategoryName,
+              newFolderName: _selectedCategory!.name,
+              fileAddress: score.score.link!,
+            );
+          }
         }
       },
     );
@@ -446,6 +458,7 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
     String message = 'Score updated successfully!';
     bool failed = false;
     final oldCatNum = score.score.catalogNumber;
+    final oldCategory = score.category!.name;
     final newScore = await scoreNotifier.updateScoreFromObject(
       resetScore.score,
       resetScore.subcategories,
@@ -461,6 +474,18 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
           session: session,
           oldCatNum: oldCatNum,
         );
+        if (oldCategory != newScore.category?.name &&
+            newScore.score.link != null &&
+            newScore.score.link!.isNotEmpty) {
+          final account = ref.read(googleSignInProvider);
+          await DriveHelper.moveFile(
+            account: account,
+            parentFolderId: session!.driveFolderId!,
+            oldFolderName: oldCategory,
+            newFolderName: newScore.category!.name,
+            fileAddress: newScore.score.link!,
+          );
+        }
       } on AddToSheetException catch (e) {
         message = "Failed to reset Sheet: ${e.message}";
         failed = true;
@@ -487,6 +512,18 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                 session: session,
                 oldCatNum: oldCatNum,
               );
+              if (oldCategory != newScore.category?.name &&
+                  newScore.score.link != null &&
+                  newScore.score.link!.isNotEmpty) {
+                final account = ref.read(googleSignInProvider);
+                await DriveHelper.moveFile(
+                  account: account,
+                  parentFolderId: session!.driveFolderId!,
+                  oldFolderName: oldCategory,
+                  newFolderName: newScore.category!.name,
+                  fileAddress: newScore.score.link!,
+                );
+              }
             } catch (e) {
               GlobalSnackbar.show(
                 message: "Retry failed: ${e.toString()}",
@@ -859,49 +896,58 @@ class _ViewScoreState extends ConsumerState<ViewScore> {
                                 : '(none)',
                         handleSubmit: () => _linkSubmit(score, session),
                       ),
-                      SizedBox(height: 8),
-                      Divider(),
-                      (score.score.link != null && score.score.link!.isNotEmpty)
-                          ? Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              TextButton.icon(
-                                icon: const Icon(Icons.open_in_new),
-                                label: const Text('Open'),
-                                onPressed:
-                                    () =>
-                                        launchUrl(Uri.parse(score.score.link!)),
-                              ),
-                              TextButton.icon(
-                                icon: const Icon(Icons.copy),
-                                label: const Text('Copy'),
-                                onPressed: () {
-                                  Clipboard.setData(
-                                    ClipboardData(text: score.score.link!),
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Link copied to clipboard'),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          )
-                          : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              TextButton.icon(
-                                icon: const Icon(Icons.upload),
-                                label: const Text('Upload Score From Files'),
-                                onPressed: () async {
-                                  setState(() => _uploading = true);
-                                  await _uploadScoreOnPressed(score, session!);
-                                  setState(() => _uploading = false);
-                                },
-                              ),
-                            ],
-                          ),
+                      if (!_uploading) ...[
+                        SizedBox(height: 8),
+                        Divider(),
+                        (score.score.link != null &&
+                                score.score.link!.isNotEmpty)
+                            ? Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                TextButton.icon(
+                                  icon: const Icon(Icons.open_in_new),
+                                  label: const Text('Open'),
+                                  onPressed:
+                                      () => launchUrl(
+                                        Uri.parse(score.score.link!),
+                                      ),
+                                ),
+                                TextButton.icon(
+                                  icon: const Icon(Icons.copy),
+                                  label: const Text('Copy'),
+                                  onPressed: () {
+                                    Clipboard.setData(
+                                      ClipboardData(text: score.score.link!),
+                                    );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Link copied to clipboard',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            )
+                            : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                TextButton.icon(
+                                  icon: const Icon(Icons.upload),
+                                  label: const Text('Upload Score From Files'),
+                                  onPressed: () async {
+                                    setState(() => _uploading = true);
+                                    await _uploadScoreOnPressed(
+                                      score,
+                                      session!,
+                                    );
+                                    setState(() => _uploading = false);
+                                  },
+                                ),
+                              ],
+                            ),
+                      ],
                     ],
                   ),
                   SizedBox(height: 8),

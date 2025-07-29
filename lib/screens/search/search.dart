@@ -7,6 +7,7 @@ import 'package:library_app/providers/search_provider.dart';
 import 'package:library_app/screens/search/score_card.dart';
 import 'package:library_app/shared/app_drawer.dart';
 import 'package:library_app/shared/appbar.dart';
+import 'package:library_app/shared/gradient_button.dart';
 
 class Search extends ConsumerStatefulWidget {
   const Search({super.key});
@@ -111,6 +112,7 @@ class _SearchState extends ConsumerState<Search> with TickerProviderStateMixin {
     final results = ref.watch(filteredScoresProvider);
 
     return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 37, 36, 37),
       appBar: CustomAppBar(title: "Search"),
       drawer: AppDrawer(),
       body: categoriesAsync.when(
@@ -121,7 +123,7 @@ class _SearchState extends ConsumerState<Search> with TickerProviderStateMixin {
                 children: [
                   Expanded(
                     child: Padding(
-                      padding: EdgeInsets.fromLTRB(16, 0, 16, 0),
+                      padding: EdgeInsets.fromLTRB(8, 0, 8, 0),
                       child:
                           (results.isNotEmpty)
                               ? ListView.builder(
@@ -170,8 +172,11 @@ class _SearchState extends ConsumerState<Search> with TickerProviderStateMixin {
         curve: Curves.easeInOut,
         child: Container(
           decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 37, 36, 37),
-            borderRadius: BorderRadius.circular(16),
+            color: const Color.fromARGB(255, 72, 72, 72),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(16),
+              topRight: Radius.circular(16),
+            ),
             boxShadow: const [BoxShadow(blurRadius: 4, color: Colors.black38)],
           ),
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
@@ -183,7 +188,7 @@ class _SearchState extends ConsumerState<Search> with TickerProviderStateMixin {
                   width: 30,
                   height: 4,
                   margin: EdgeInsets.fromLTRB(0, 8, 0, 16),
-                  color: Colors.grey,
+                  color: const Color.fromARGB(130, 255, 255, 255),
                 ),
               ),
               if (_isExpanded) ...[
@@ -249,8 +254,12 @@ class _SearchState extends ConsumerState<Search> with TickerProviderStateMixin {
       textAlignVertical: TextAlignVertical.center,
       style: Theme.of(context).textTheme.bodyMedium,
       onChanged: (val) => ref.read(searchQueryProvider.notifier).update(val),
+      cursorColor: Colors.grey[300],
       decoration: InputDecoration(
-        fillColor: Colors.grey[850],
+        border: InputBorder.none,
+        fillColor: const Color.fromARGB(20, 255, 255, 255),
+        // fillColor: const Color.fromARGB(255, 110, 110, 110),
+        // fillColor: Colors.grey[850],
         hintText: "search all fields",
         hintStyle: Theme.of(
           context,
@@ -264,7 +273,8 @@ class _SearchState extends ConsumerState<Search> with TickerProviderStateMixin {
     return TextButton(
       style: ButtonStyle(
         backgroundColor: WidgetStateProperty.all(
-          const Color.fromARGB(106, 255, 0, 0),
+          // const Color.fromARGB(60, 255, 255, 255),
+          const Color.fromARGB(123, 255, 0, 0),
         ),
         shape: WidgetStateProperty.all(
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
@@ -296,15 +306,19 @@ class _SearchState extends ConsumerState<Search> with TickerProviderStateMixin {
         onChanged: (val) {
           _updateFilters();
         },
+        cursorColor: Colors.grey[300],
         style: Theme.of(context).textTheme.bodyMedium,
         decoration: InputDecoration(
+          border: InputBorder.none,
           labelText: label,
           labelStyle: const TextStyle(color: Colors.white),
           suffixIcon: const Icon(
             Icons.search,
-            color: Color.fromRGBO(189, 189, 189, 1),
+            color: Color.fromRGBO(224, 224, 224, 1),
+            // color: Color.fromRGBO(189, 189, 189, 1),
           ),
-          fillColor: Colors.grey[850],
+          fillColor: const Color.fromARGB(20, 255, 255, 255),
+          // fillColor: Colors.grey[850],
         ),
       ),
     );
@@ -319,10 +333,14 @@ class _SearchState extends ConsumerState<Search> with TickerProviderStateMixin {
     return Padding(
       padding: const EdgeInsets.only(bottom: 5),
       child: DropdownButtonFormField<T>(
-        dropdownColor: Colors.grey[800],
+        dropdownColor: const Color.fromARGB(255, 90, 90, 90),
+        // dropdownColor: Colors.grey[800],
         value: selectedValue,
+        iconEnabledColor: Colors.grey[300],
         decoration: InputDecoration(
-          fillColor: Colors.grey[850],
+          border: InputBorder.none,
+          fillColor: const Color.fromARGB(20, 255, 255, 255),
+          // fillColor: Colors.grey[850],
           labelText: label,
           labelStyle: const TextStyle(color: Colors.white),
         ),

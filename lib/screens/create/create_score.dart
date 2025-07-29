@@ -609,49 +609,60 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                             }
                           },
                         ),
-                        const SizedBox(height: 30),
+                        if (_selectedCategory != null) ...[
+                          const SizedBox(height: 30),
 
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            "Subcategories",
-                            style: Theme.of(context).textTheme.headlineMedium,
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              "Subcategories",
+                              style: Theme.of(context).textTheme.headlineMedium,
+                            ),
                           ),
-                        ),
-
+                        ],
                         Align(
                           alignment: Alignment.centerLeft,
-                          child: Wrap(
-                            spacing: 8,
-                            children: [
-                              ..._subcategories.map((subcategory) {
-                                return CustomChoiceChip(
-                                  label: subcategory.name,
-                                  isSelected: _selectedSubcategories.contains(
-                                    subcategory,
-                                  ),
-                                  onSelected: (selected) {
-                                    FocusScope.of(context).unfocus();
-                                    setState(() {
-                                      if (selected) {
-                                        _selectedSubcategories.add(subcategory);
-                                      } else {
-                                        _selectedSubcategories.remove(
-                                          subcategory,
-                                        );
-                                      }
-                                    });
-                                  },
-                                );
-                              }),
-                              if (_selectedCategory != null)
-                                AddSubcategoryButton(
-                                  onSubmitted: (value) {
-                                    _addNewSubcategory();
-                                  },
-                                  controller: _controller,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(maxHeight: 150),
+                            child: Scrollbar(
+                              thumbVisibility: true,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.vertical,
+                                child: Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    ..._subcategories.map((subcategory) {
+                                      return CustomChoiceChip(
+                                        label: subcategory.name,
+                                        isSelected: _selectedSubcategories
+                                            .contains(subcategory),
+                                        onSelected: (selected) {
+                                          FocusScope.of(context).unfocus();
+                                          setState(() {
+                                            if (selected) {
+                                              _selectedSubcategories.add(
+                                                subcategory,
+                                              );
+                                            } else {
+                                              _selectedSubcategories.remove(
+                                                subcategory,
+                                              );
+                                            }
+                                          });
+                                        },
+                                      );
+                                    }),
+                                    if (_selectedCategory != null)
+                                      AddSubcategoryButton(
+                                        onSubmitted: (value) {
+                                          _addNewSubcategory();
+                                        },
+                                        controller: _controller,
+                                      ),
+                                  ],
                                 ),
-                            ],
+                              ),
+                            ),
                           ),
                         ),
 

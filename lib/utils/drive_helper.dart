@@ -23,25 +23,9 @@ class DriveHelper {
     String parentFolderId,
     String folderName,
   ) async {
-    final auth = await account.currentUser?.authentication;
-    final token = auth?.accessToken;
+    final driveApi = await createApiObject(account: account);
+    if (driveApi == null) return null;
 
-    if (token == null) return null;
-
-    final client = authenticatedClient(
-      http.Client(),
-      AccessCredentials(
-        AccessToken(
-          'Bearer',
-          token,
-          DateTime.now().toUtc().add(Duration(hours: 1)),
-        ),
-        null,
-        ['https://www.googleapis.com/auth/drive.file'],
-      ),
-    );
-
-    final driveApi = drive.DriveApi(client);
     String? subfolderId = await getSubfolderId(
       driveApi: driveApi,
       parentFolderId: parentFolderId,
@@ -67,13 +51,6 @@ class DriveHelper {
       $fields: 'id',
     );
 
-    await driveApi.permissions.create(
-      drive.Permission()
-        ..type = 'anyone'
-        ..role = 'reader',
-      uploadedFile.id!,
-    );
-
     final updatedFile =
         await driveApi.files.get(uploadedFile.id!, $fields: 'webViewLink')
             as drive.File;
@@ -95,14 +72,75 @@ class DriveHelper {
     final createdFolder = await driveApi.files.create(newFolder);
     if (createdFolder.id == null) return null;
 
-    await driveApi.permissions.create(
-      drive.Permission()
-        ..type = 'anyone'
-        ..role = 'reader',
-      createdFolder.id!,
+    return createdFolder.id!;
+  }
+
+  static Future<drive.DriveApi?> createApiObject({
+    required GoogleSignIn account,
+  }) async {
+    final auth = await account.currentUser?.authentication;
+    final token = auth?.accessToken;
+    if (token == null) return null;
+
+    final client = authenticatedClient(
+      http.Client(),
+      AccessCredentials(
+        AccessToken(
+          'Bearer',
+          token,
+          DateTime.now().toUtc().add(Duration(hours: 1)),
+        ),
+        null,
+        ['https://www.googleapis.com/auth/drive.file'],
+      ),
     );
 
-    return createdFolder.id!;
+    return drive.DriveApi(client);
+  }
+
+  static Future<String?> moveFile({
+    required GoogleSignIn account,
+    required String parentFolderId,
+    required String oldFolderName,
+    required String newFolderName,
+    required String fileAddress,
+  }) async {
+    final driveApi = await createApiObject(account: account);
+    if (driveApi == null) return null;
+
+    String? oldFolderId = await getSubfolderId(
+      driveApi: driveApi,
+      parentFolderId: parentFolderId,
+      subfolderName: oldFolderName,
+    );
+    if (oldFolderId == null) return null;
+
+    String? newFolderId = await getSubfolderId(
+      driveApi: driveApi,
+      parentFolderId: parentFolderId,
+      subfolderName: newFolderName,
+    );
+
+    newFolderId ??= await createNewFolder(
+      driveApi: driveApi,
+      name: newFolderName,
+      parentFolderId: parentFolderId,
+    );
+    newFolderId ??= parentFolderId;
+
+    final uri = Uri.parse(fileAddress);
+    final match = RegExp(r'/d/([a-zA-Z0-9_-]+)').firstMatch(uri.path);
+    final fileId = match?.group(1) ?? '';
+
+    final updatedFile = await driveApi.files.update(
+      drive.File(),
+      fileId,
+      addParents: newFolderId,
+      removeParents: oldFolderId,
+      $fields: 'id, parents, webViewLink',
+    );
+
+    return updatedFile.webViewLink;
   }
 
   static Future<String?> getSubfolderId({
