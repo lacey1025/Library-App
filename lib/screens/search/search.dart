@@ -128,7 +128,7 @@ class _SearchState extends ConsumerState<Search> with TickerProviderStateMixin {
                           (results.isNotEmpty)
                               ? ListView.builder(
                                 controller: _scrollController,
-                                itemCount: results.length,
+                                itemCount: results.length + 1,
                                 itemBuilder: (context, index) {
                                   if (index == 0) {
                                     return const SizedBox(height: 8);

@@ -8,7 +8,6 @@ import 'package:library_app/models/sheet_data.dart';
 import 'package:library_app/models/status.dart';
 import 'package:library_app/providers/app_initializer.dart';
 import 'package:library_app/providers/categories_provider.dart';
-import 'package:library_app/providers/database_provider.dart';
 import 'package:library_app/providers/scores_provider.dart';
 import 'package:library_app/providers/session_provider.dart';
 import 'package:library_app/screens/create/add_subcategory_button.dart';
@@ -18,6 +17,7 @@ import 'package:library_app/shared/gradient_button.dart';
 import 'package:library_app/shared/status_card.dart';
 import 'package:library_app/shared/appbar.dart';
 import 'package:library_app/shared/custom_chip.dart';
+import 'package:library_app/utils/drive_helper.dart';
 import 'package:library_app/utils/exceptions.dart';
 import 'package:library_app/utils/google_sheet_importer.dart';
 
@@ -34,6 +34,10 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
   String? _arranger;
   String? _catalogNumber;
   String? _notes;
+  String? _link;
+  String _uploadError = '';
+  bool _uploading = false;
+  final TextEditingController _linkController = TextEditingController();
 
   CategoryWithDetails? _selectedCategory;
   final Set<SubcategoryData> _selectedSubcategories = {};
@@ -147,6 +151,27 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
     );
   }
 
+  Future<void> _uploadPDF() async {
+    if (_selectedCategory == null) return;
+    setState(() => _uploading = true);
+    final file = await DriveHelper.pickPdfFile();
+    final session = await ref.read(sessionProvider.future);
+    if (file == null || session == null || session.driveFolderId == null) {
+      return;
+    }
+    final account = ref.read(googleSignInProvider);
+    final link = await DriveHelper.uploadPdfToDrive(
+      file,
+      account,
+      session.driveFolderId!,
+      _selectedCategory!.category.name,
+    );
+    setState(() {
+      _uploading = false;
+      _linkController.text = link ?? _link ?? '';
+    });
+  }
+
   bool _validateAndSaveForm() {
     final isValid = _formGlobalKey.currentState!.validate();
     if (isValid) {
@@ -180,6 +205,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
             _selectedCategory = null;
             _selectedStatus = Status.inLibrary;
             _subcategories.clear();
+            _linkController.clear();
 
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _scrollController.animateTo(
@@ -223,6 +249,8 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
         Text("Status: ${_selectedStatus.title}", style: _boldTextStyle),
         if (_notes?.isNotEmpty ?? false)
           Text("Notes: $_notes", style: _boldTextStyle),
+        if (_link?.isNotEmpty ?? false)
+          Text("Link: $_link", style: _boldTextStyle),
       ],
     );
   }
@@ -249,6 +277,7 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
         categoryId: Value(_selectedCategory!.category.id),
         status: Value(_selectedStatus.title),
         changeTime: Value(DateTime.now()),
+        link: (_link?.isNotEmpty ?? false) ? Value(_link) : Value.absent(),
       ),
       {..._selectedSubcategories},
     );
@@ -749,6 +778,49 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
                             _notes = value;
                           },
                         ),
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          controller: _linkController,
+                          maxLines: null,
+                          decoration: InputDecoration(
+                            label: Text(
+                              "Link (optional)",
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ),
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          onSaved: (value) {
+                            _link = value;
+                          },
+                        ),
+                        if (_selectedCategory != null)
+                          Container(
+                            width: double.infinity,
+                            alignment: Alignment.center,
+                            color: Colors.grey[800],
+                            child:
+                                _uploading
+                                    ? Row(
+                                      children: const [
+                                        SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text("Uploading..."),
+                                      ],
+                                    )
+                                    : TextButton.icon(
+                                      icon: const Icon(Icons.upload),
+                                      label: const Text(
+                                        'Upload PDF From Files',
+                                      ),
+                                      onPressed: _uploadPDF,
+                                    ),
+                          ),
                       ],
                     ),
                   ),
