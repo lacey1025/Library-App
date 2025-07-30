@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:library_app/providers/app_initializer.dart';
+import 'package:library_app/providers/sign_in_provider.dart';
 import 'package:library_app/providers/session_provider.dart';
 import 'package:library_app/screens/link_library/fix_errors_page.dart';
 import 'package:library_app/screens/login/login_screen.dart';
@@ -32,8 +32,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   Future<void> _initApp() async {
     try {
-      final appStartInfo = await ref.read(appInitializerProvider.future);
-
+      final googleSignIn = ref.read(googleSignInProvider);
+      final account = await googleSignIn.signInSilently();
       if (!mounted) return;
 
       // Go to login - we have sheet and folder from join link
@@ -49,7 +49,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           ),
         );
         // go to login - we have sheet from join screen but aren't signed in
-      } else if (appStartInfo.googleAccount == null) {
+      } else if (account == null) {
         Navigator.of(
           context,
         ).pushReplacement(MaterialPageRoute(builder: (_) => LoginScreen()));
@@ -57,7 +57,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       } else {
         final session = await ref
             .read(sessionProvider.notifier)
-            .getUserCurrentSession(appStartInfo.googleAccount!.id);
+            .getUserCurrentSession(account.id);
         // no library for this user
         if (session == null) {
           if (!mounted) return;
@@ -68,7 +68,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           if (!session.isActive) {
             await ref
                 .read(sessionProvider.notifier)
-                .activateUserPrimary(appStartInfo.googleAccount!.id);
+                .activateUserPrimary(account.id);
           }
           if (!mounted) return;
           Navigator.of(context).pushReplacement(

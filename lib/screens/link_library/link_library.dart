@@ -77,8 +77,12 @@ class _LinkLibraryScreenState extends ConsumerState<LinkLibraryScreen> {
   }
 
   Future<void> _linkLibrary() async {
-    final startInfo = await ref.read(appInitializerProvider.future);
-    final userId = startInfo.googleAccount!.id;
+    final googleSignIn = ref.read(googleSignInProvider);
+    final googleAccount = await googleSignIn.signInSilently();
+    if (googleAccount == null) {
+      return;
+    }
+    final userId = googleAccount.id;
     final session = SessionsCompanion(
       libraryName: Value(_libraryName!),
       userId: Value(userId),

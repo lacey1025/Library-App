@@ -36,8 +36,8 @@ class GoogleSheetHelper {
       throw AddToSheetException("Missing session info");
     }
 
-    final init = await ref.read(appInitializerProvider.future);
-    final googleAccount = init.googleAccount;
+    final signIn = ref.read(googleSignInProvider);
+    final googleAccount = await signIn.signInSilently();
     if (googleAccount == null) {
       throw AddToSheetException("Google account not available");
     }

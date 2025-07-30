@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-
-import 'package:flutter/material.dart';
 import 'package:library_app/screens/how_to.dart/sheet_image_animation.dart';
 import 'package:library_app/screens/link_library/link_library.dart';
+import 'package:library_app/screens/login/create_sheet.dart';
 
 class TutorialScreen extends StatefulWidget {
-  const TutorialScreen({super.key});
+  final String goTo;
+  const TutorialScreen({super.key, required this.goTo});
 
   @override
   State<TutorialScreen> createState() => _TutorialScreenState();
@@ -48,9 +48,15 @@ class _TutorialScreenState extends State<TutorialScreen>
   }
 
   void _finishTutorial() {
+    Widget newPage;
+    if (widget.goTo == 'link') {
+      newPage = LinkLibraryScreen();
+    } else {
+      newPage = CreateSheet();
+    }
     Navigator.of(
       context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => LinkLibraryScreen()));
+    ).pushReplacement(MaterialPageRoute(builder: (_) => newPage));
   }
 
   @override

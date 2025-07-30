@@ -6,7 +6,7 @@ import 'package:library_app/models/category_with_details.dart';
 import 'package:library_app/models/score_with_details.dart';
 import 'package:library_app/models/sheet_data.dart';
 import 'package:library_app/models/status.dart';
-import 'package:library_app/providers/app_initializer.dart';
+import 'package:library_app/providers/sign_in_provider.dart';
 import 'package:library_app/providers/categories_provider.dart';
 import 'package:library_app/providers/scores_provider.dart';
 import 'package:library_app/providers/session_provider.dart';
@@ -35,7 +35,6 @@ class _CreateScoreState extends ConsumerState<CreateScore> {
   String? _catalogNumber;
   String? _notes;
   String? _link;
-  String _uploadError = '';
   bool _uploading = false;
   final TextEditingController _linkController = TextEditingController();
 

@@ -65,8 +65,6 @@ final filteredScoresProvider = Provider<List<ScoreWithDetails>>((ref) {
     data: (scores) {
       if (query.isEmpty && filters.isEmpty) return scores;
 
-      Iterable<ScoreWithDetails> filtered = scores;
-
       if (query.isNotEmpty) {
         final fuzzy = Fuzzy<ScoreWithDetails>(
           scores,

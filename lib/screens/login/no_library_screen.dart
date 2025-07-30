@@ -64,7 +64,9 @@ class NoLibraryScreen extends ConsumerWidget {
                   GradientButton(
                     onPressed: () {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => TutorialScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => TutorialScreen(goTo: 'create'),
+                        ),
                       );
                     },
                     text: Text("Create New Library"),
@@ -77,7 +79,9 @@ class NoLibraryScreen extends ConsumerWidget {
                   GradientButton(
                     onPressed: () {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => TutorialScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => TutorialScreen(goTo: 'link'),
+                        ),
                       );
                     },
                     text: Text("Link My Google Sheets Catalog"),

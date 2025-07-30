@@ -7,7 +7,6 @@ import 'package:library_app/providers/search_provider.dart';
 import 'package:library_app/screens/search/score_card.dart';
 import 'package:library_app/shared/app_drawer.dart';
 import 'package:library_app/shared/appbar.dart';
-import 'package:library_app/shared/gradient_button.dart';
 
 class Search extends ConsumerStatefulWidget {
   const Search({super.key});
@@ -351,18 +350,21 @@ class _SearchState extends ConsumerState<Search> with TickerProviderStateMixin {
   }
 
   Widget _noItems() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            "No scores found",
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          SizedBox(height: 30),
-          Image.asset('assets/img/sad_redbull.png', height: 200),
-        ],
+    return ClipRect(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              "No scores found",
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            SizedBox(height: 30),
+            if (!_isAdvancedSearch || !_isExpanded)
+              Image.asset('assets/img/sad_redbull.png', height: 200),
+          ],
+        ),
       ),
     );
   }

@@ -173,8 +173,9 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
       await _createInitialHeaders(signIn: googleSignIn, authHeaders: headers);
 
       if (!mounted) return;
-      final startInfo = await ref.read(appInitializerProvider.future);
-      final userId = startInfo.googleAccount!.id;
+      final signIn = await googleSignIn.signInSilently();
+      if (signIn == null) return;
+      final userId = signIn.id;
       final session = SessionsCompanion(
         libraryName: Value(_libraryName!),
         userId: Value(userId),
